@@ -104,17 +104,17 @@
 
 ## PHASE 5 — Datenbank + User Management
 
-- [ ] Supabase-Schema entwerfen:
-  - [ ] `users` (via Supabase Auth)
-  - [ ] `profiles` (Plan: free/paid, Newsletter-Einstellungen)
-  - [ ] `subscriptions` (Zahlungsstatus, LemonSqueezy-Subscription-ID, Ablaufdatum)
-  - [ ] `issues` (Newsletter-Ausgaben, Status: draft/published)
-  - [ ] `issue_content` (Segmente je Ausgabe)
-  - [ ] `raw_articles` (gecrawllte Quellen)
-  - [ ] `newsletter_deliveries` (Versandlog je User)
-- [ ] Row-Level-Security aktivieren (User sieht nur eigene Daten)
-- [ ] Auth-Flows: Registrierung, Login, E-Mail-Verifikation, Passwort-Reset (Supabase Auth + Resend)
-- [ ] API-Hilfsfunktionen: `lib/supabase.ts` (Client), `lib/auth.ts` (Session)
+- [x] Supabase-Schema entwerfen (`supabase/migrations/0001_init.sql`):
+  - [x] `profiles` (Plan: free/paid, Newsletter-Einstellungen)
+  - [x] `subscriptions` (Zahlungsstatus, LemonSqueezy-Subscription-ID, Ablaufdatum)
+  - [x] `issues` (Newsletter-Ausgaben, Status: draft/qa/published)
+  - [x] `issue_content` (Segmente je Ausgabe, `paid_only`-Gating)
+  - [x] `raw_articles` (gecrawllte Quellen)
+  - [x] `newsletter_deliveries` (Versandlog je User)
+- [x] Row-Level-Security aktivieren (User sieht nur eigene Daten; Free/Paid-Gating via `is_paid_subscriber()`)
+- [x] API-Hilfsfunktionen: `lib/supabase/client.ts`, `lib/supabase/server.ts` (Service-Role), `lib/auth.ts` (Session/Profil/Paid-Check), `src/proxy.ts` (Session-Refresh, Next-16-Proxy)
+- [ ] Auth-Flows: Registrierung, Login, E-Mail-Verifikation, Passwort-Reset (UI folgt in Phase 6, Resend in Phase 7)
+- [ ] Migration in echtes Supabase-Projekt anwenden + Keys in `.env` hinterlegen (Nutzer-Schritt)
 
 ## PHASE 6 — Frontend
 

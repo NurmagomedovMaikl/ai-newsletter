@@ -403,4 +403,35 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 
 
 
+## Session 9 — 05.08.2026 — Phase 5 (Supabase: Schema + Auth-Bibliothek) umgesetzt
+
+### Neue Abhängigkeiten
+- `@supabase/supabase-js`, `@supabase/ssr`
+
+### Neue Dateien
+| Datei | Zweck |
+|---|---|
+| `supabase/migrations/0001_init.sql` | Komplettes Schema + RLS + Trigger (in Supabase SQL Editor ausführbar) |
+| `src/lib/supabase/client.ts` | Browser-Client (`createClient`, Client Components) |
+| `src/lib/supabase/server.ts` | Server-Client (`createServerSupabase`, Cookie-Session) + `createServiceClient` (Service-Role) |
+| `src/lib/auth.ts` | `getSession`, `requireUser`, `getProfile`, `isPaidUser` |
+| `src/proxy.ts` | **Next-16-Proxy** (ehem. Middleware): Supabase-Session-Refresh für jede Anfrage |
+
+### Schema (Höhepunkte)
+- `profiles` (plan free/paid, email_preferences), `subscriptions` (LemonSqueezy-ID, status, current_period_end), `issues` (draft/qa/published), `issue_content` (Segment-JSON, **`paid_only`**-Flag), `raw_articles` (Pipeline-Output, nicht öffentlich), `newsletter_deliveries` (Versandlog).
+- **RLS:** User sieht nur eigene Daten; veröffentlichte Issues öffentlich lesbar; Paid-Segmente nur mit aktivem Abo (`is_paid_subscriber()`); `raw_articles` nur via Service-Role.
+- **Trigger:** `set_updated_at` (updated_at) + `handle_new_user` (legt bei Registrierung automatisch das Profil an).
+
+### Technische Erkenntnisse (Next 16)
+1. **Middleware → Proxy:** Next 16 hat `middleware.ts` in **`proxy.ts`** umbenannt (gleiche Funktionalität, `export function proxy`). Lokale Doku: `node_modules/next/dist/docs/01-app/01-getting-started/16-proxy.md`.
+2. Browser- und Server-Client wurden in **getrennte Dateien** aufgeteilt: der Browser-Client darf `next/headers` nicht importieren (sonst Build-Fehler bei Client Components).
+3. `tsc`/`lint`/`next build` grün; Build erkennt die Proxy-Route korrekt.
+
+### Offen (Nutzer-Schritt)
+- Kostenloses Supabase-Projekt anlegen → `NEXT_PUBLIC_SUPABASE_URL` + `NEXT_PUBLIC_SUPABASE_ANON_KEY` + `SUPABASE_SERVICE_ROLE_KEY` in `.env`.
+- `supabase/migrations/0001_init.sql` im **Supabase SQL Editor** ausführen.
+- Danach: Pipeline-Persistenz (raw_articles/issues in DB, Assets in Storage — Phase-1/2/3-Open-Points) + Auth-UI (Phase 6).
+
+
+
 
