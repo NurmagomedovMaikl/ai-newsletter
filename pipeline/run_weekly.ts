@@ -8,6 +8,7 @@ import { generateAssets } from "./generate_assets";
 import { runQa } from "./qa";
 import { renderEmail } from "./renderEmail";
 import { persist } from "./persist";
+import { notifyAdminOnErrorIfConfigured } from "@/lib/email-flows";
 import type { NewsletterDraft, QaReport } from "@/lib/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -95,6 +96,7 @@ export async function runWeekly(): Promise<QaReport> {
   }
 
   const autoFix = process.argv.includes("--auto-fix");
+  const publish = process.argv.includes("--publish");
   const from = startFrom();
   const timings: Record<string, number> = {};
   const t0 = Date.now();
@@ -116,7 +118,12 @@ export async function runWeekly(): Promise<QaReport> {
     }
   }
 
-  if (from <= 5) await step("Stufe 6/6: Persistenz (Supabase)", async () => { timings.persist = Date.now(); await persist(false); });
+  const status: "draft" | "qa" | "published" = !report.passed
+    ? "draft"
+    : publish
+      ? "published"
+      : "qa";
+  if (from <= 5) await step("Stufe 6/6: Persistenz (Supabase)", async () => { timings.persist = Date.now(); await persist(status); });
 
   const durationSec = ((Date.now() - t0) / 1000).toFixed(1);
 
@@ -146,10 +153,13 @@ if (isEntrypoint) {
   runWeekly()
     .then((report) => {
       if (report.passed || process.env.QA_IGNORE_ERRORS === "1") process.exit(0);
-      process.exit(1);
+      notifyAdminOnErrorIfConfigured(
+        `QA nicht bestanden (${report.issueDate}): ${report.errorCount} Fehler, ${report.warningCount} Warnungen. Ausgabe bleibt draft.`,
+      ).finally(() => process.exit(1));
     })
-    .catch((err) => {
+    .catch(async (err) => {
       console.error(`\n[WEEKLY] FEHLER: ${err.message}`);
+      await notifyAdminOnErrorIfConfigured(`run_weekly (${new Date().toISOString()}): ${err.message}\n\nStack:\n${err.stack ?? ""}`);
       process.exit(1);
     });
 }

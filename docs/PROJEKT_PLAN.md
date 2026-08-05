@@ -161,13 +161,13 @@
   - [x] `--from=<stufe>` zum Starten mitten in der Pipeline
   - [x] `--auto-fix`: kaputte Empfehlungs-Links automatisch entfernen + QA-Wiederholung
   - [x] Fail-closed: QA-Fehler → Abbruch mit Exit 1
-- [ ] Cron-Job einrichten:
-  - [ ] Option A: Vercel Cron (täglich wöchentlich, z.B. Montag 06:00 UTC)
-  - [ ] Option B: GitHub Actions Schedule
-- [x] Fehler-Handling: Retry (LLM 429), Logging (`run_weekly_*.json`), Abbruch bei QA-Fail; Fehler-Notification an Admin folgt mit Resend (Phase 7)
-- [ ] Status-Tracking je Ausgabe (draft → qa → published)
-- [ ] Manueller Trigger möglich (für Tests / Sonderausgaben) — lokal via `npm run pipeline:weekly`; Web-Trigger folgt mit Frontend
-- [ ] Statistiken: Öffnungsraten, Klickraten (z.B. Vercel Analytics / Brevo-Berichte)
+- [x] Cron-Job einrichten:
+  - [x] Option A: Vercel Cron (Montag 06:00 UTC → `/api/send-weekly`, Fallback-Sender; `vercel.json`)
+  - [x] Option B: GitHub Actions Schedule (Montag 04:45 UTC → kompletter Workflow in `.github/workflows/weekly.yml`)
+- [x] Fehler-Handling: Retry (LLM 429), Logging (`run_weekly_*.json`), Abbruch bei QA-Fail; Fehler-Notification an Admin via Resend (`notifyAdminOnErrorIfConfigured` + Actions-Step)
+- [x] Status-Tracking je Ausgabe (draft → qa → published via `persist(status)`, `--publish`-Flag)
+- [x] Manueller Trigger möglich (workflow_dispatch in GitHub Actions; lokal `npm run pipeline:weekly -- --publish`)
+- [x] Statistiken: Grundlage in DB (Migration 0002, `delivered`-Status + `opened_at`/`clicked_at` via Resend-Webhook, Auswertungs-SQL in Migration); Dashboard/UI folgt optional (Phase 9/10)
 
 ## PHASE 9 — Qualitätstests + Iteration
 

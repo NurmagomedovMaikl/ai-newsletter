@@ -72,13 +72,13 @@ async function upsertRawArticles(service: SupabaseClient, articles: ScoredArticl
 async function upsertIssue(
   service: SupabaseClient,
   draft: NewsletterDraft,
-  publish: boolean,
+  status: "draft" | "qa" | "published",
 ): Promise<string> {
   const payload = {
     issue_date: draft.issueDate,
     title: draft.title,
-    status: publish ? "published" : "draft",
-    ...(publish ? { published_at: new Date().toISOString() } : {}),
+    status,
+    ...(status === "published" ? { published_at: new Date().toISOString() } : {}),
   };
   const { data, error } = await service
     .from("issues")
@@ -145,16 +145,16 @@ async function replaceIssueContent(service: SupabaseClient, issueId: string, seg
   if (error) throw new Error(`issue_content insert: ${error.message}`);
 }
 
-export async function persist(publish: boolean): Promise<void> {
+export async function persist(status: "draft" | "qa" | "published"): Promise<void> {
   const draft = findLatestDraft();
-  console.log(`[PERSIST] Ausgabe ${draft.issueDate} (${publish ? "published" : "draft"}) ...`);
+  console.log(`[PERSIST] Ausgabe ${draft.issueDate} (${status}) ...`);
 
   const scored = loadJson<ScoredArticle[]>(join(OUTPUT_DIR, "scored_articles.json"));
   const service = serviceClient();
 
   const articleCount = await upsertRawArticles(service, scored);
 
-  const issueId = await upsertIssue(service, draft, publish);
+  const issueId = await upsertIssue(service, draft, status);
   console.log(`[PERSIST] Issue ${draft.issueDate} -> ${issueId}`);
 
   const images = await uploadAssets(service, draft.issueDate);
@@ -165,7 +165,7 @@ export async function persist(publish: boolean): Promise<void> {
   const summary = {
     ranAt: new Date().toISOString(),
     issueDate: draft.issueDate,
-    status: publish ? "published" : "draft",
+    status,
     issueId,
     articles: articleCount,
     segments: segments.length,
@@ -183,7 +183,12 @@ if (isEntrypoint) {
   if (typeof process.loadEnvFile === "function" && existsSync(join(process.cwd(), ".env"))) {
     process.loadEnvFile(join(process.cwd(), ".env"));
   }
-  persist(process.argv.includes("--publish"))
+  const status: "draft" | "qa" | "published" = process.argv.includes("--publish")
+    ? "published"
+    : process.argv.includes("--qa")
+      ? "qa"
+      : "draft";
+  persist(status)
     .then(() => process.exit(0))
     .catch((err) => {
       console.error(`\n[PERSIST] FEHLER: ${err.message}`);

@@ -592,3 +592,48 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 6. Danach Phase 8: Vercel-Cron (wöchentlich, nach Pipeline-Lauf) auf `/api/send-weekly`.
 
 
+
+## Session 14 — 05.08.2026 — Phase 8 (Automatisierung des Weekly-Workflows) umgesetzt
+
+### Ziel
+- Der komplette Wochen-Workflow läuft automatisch: Pipeline (collect → score → generate → assets → qa → persist) → Veröffentlichung → E-Mail-Versand → Fehler-Notification.
+- Manueller Trigger + Delivery-Statistiken (Öffnungen/Klicks).
+
+### Architektur (zwei sich ergänzende Trigger)
+1. **GitHub Actions (`Option B`, primärer Content-Workflow)** — `.github/workflows/weekly.yml`:
+   - `schedule` Montag 04:45 UTC (vor dem Vercel-Cron-Send um 06:00 UTC) + `workflow_dispatch` für manuellen Trigger.
+   - Steps: checkout → Node 22 → `npm ci` → `.env` aus Repository-Secrets erzeugen → `npm run pipeline:weekly -- --auto-fix --publish` → per `curl` den Versand anstoßen (`POST https://<NEWSLETTER_APP_URL>/api/send-weekly`, Bearer `CRON_SECRET`) → bei Fehler Admin-Mail via Resend-API.
+   - `concurrency`-Gruppe verhindert parallele Läufe.
+2. **Vercel Cron (`Option A`, Fallback-Sender)** — `vercel.json`: `crons: [{ path: "/api/send-weekly", schedule: "0 6 * * 1" }]` (Montag 06:00 UTC = 08:00 MEZ). Vercel sendet automatisch `Authorization: Bearer $CRON_SECRET`; Versand ist idempotent (`newsletter_deliveries`), Doppel-Send daher harmlos.
+
+### Status-Tracking je Ausgabe (draft → qa → published)
+- `pipeline/persist.ts`: Signatur `persist(status: "draft"|"qa"|"published")` statt boolean. `published_at` wird nur bei `published` gesetzt.
+- CLI: `npm run pipeline:persist -- --publish` → published, `--qa` → qa, ohne Flag → draft.
+- `run_weekly.ts`: neues `--publish`-Flag; Statuslogik = QA nicht bestanden → `draft`; bestanden ohne `--publish` → `qa`; bestanden + `--publish` → `published`.
+
+### Fehler-Notification (Admin-Mail)
+- `src/lib/email-flows.ts`: `notifyAdminOnErrorIfConfigured(message)` (Best-Effort an `ADMIN_EMAIL`).
+- Aufgerufen in `run_weekly.ts` bei: unerwartetem Fehler (catch, inkl. Stack) und QA-Nichtbestehen (bleibt draft, Exit 1).
+- Zusätzlich resendet der Actions-Workflow eine Fehler-Mail (mit Run-Link), falls die Pipeline abgebrochen ist.
+
+### Delivery-Statistiken (Öffnungen/Klicks)
+- Migration `supabase/migrations/0002_email_stats.sql`: Status-Check von `newsletter_deliveries` um **`delivered`** erweitert (`opened_at`/`clicked_at` existierten schon seit 0001).
+- Resend-Webhook (`/api/webhooks/resend`) verarbeitet jetzt: `email.delivered` → `status=delivered`, `email.opened` → `opened_at`, `email.clicked` → `clicked_at`, `email.bounced` → `bounced` (bisher nur bounced).
+- Auswertungs-SQL (Beispiel) ist in der Migration kommentiert; Dashboard/UI folgt optional in Phase 9/10.
+
+### Weitere Änderungen
+- `.env.example`: Abschnitt „GitHub Actions" — die gleichen Keys als Repository-Secrets hinterlegen (Liste im Kommentar).
+- GitHub-Secrets nötig: `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `NEWSAPI_KEY`, `GOOGLE_FACTCHECK_API_KEY`, `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, `ADMIN_EMAIL`, `CRON_SECRET`, `NEWSLETTER_APP_URL` (https://<app>.vercel.app).
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint .` ✓ · `next build` ✓ (Routen unverändert; vercel.json wird erst von Vercel selbst geprüft).
+
+### Nutzer-Schritte (Phase 8, Deployment)
+1. Repo nach GitHub pushen (privates Repo empfohlen): `git remote add origin …` + `git push -u origin main`.
+2. GitHub → Settings → Secrets and variables → Actions: obige Secrets anlegen.
+3. Vercel: GitHub-Repo importieren → Framework Next.js, Build `next build`. Env-Variablen in Vercel-Project-Settings setzen (gleiche wie lokal, `NEXT_PUBLIC_SITE_URL` = Produktions-URL). Cron wird über `vercel.json` automatisch aktiv (Hobby: min. täglich → wöchentlich ok).
+4. Supabase Auth → URL Configuration: Produktions-Site-URL + Redirect-URLs (`https://<app>.vercel.app/auth/callback` usw.) ergänzen.
+5. `RESEND_WEBHOOK_SECRET` + Webhook-Events `email.bounced`/`email.delivered`/`email.opened`/`email.clicked` auf `https://<app>.vercel.app/api/webhooks/resend`.
+6. Test: `workflow_dispatch` im GitHub-UI auslösen oder `npm run pipeline:weekly -- --publish` lokal → danach `POST /api/send-weekly` mit Bearer `CRON_SECRET`.
+
+
