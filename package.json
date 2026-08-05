@@ -12,7 +12,8 @@
     "pipeline:generate": "tsx pipeline/generate_content.ts",
     "pipeline:assets": "tsx pipeline/generate_assets.ts",
     "pipeline:qa": "tsx pipeline/qa.ts",
-    "pipeline:weekly": "tsx pipeline/run_weekly.ts"
+    "pipeline:weekly": "tsx pipeline/run_weekly.ts",
+    "pipeline:persist": "tsx pipeline/persist.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.4",

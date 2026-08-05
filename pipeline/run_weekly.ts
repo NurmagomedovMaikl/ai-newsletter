@@ -7,13 +7,14 @@ import { generate } from "./generate_content";
 import { generateAssets } from "./generate_assets";
 import { runQa } from "./qa";
 import { renderEmail } from "./renderEmail";
+import { persist } from "./persist";
 import type { NewsletterDraft, QaReport } from "@/lib/types";
 
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const OUTPUT_DIR = join(__dirname, "output");
 
-type Stage = "collect" | "score" | "generate" | "assets" | "qa";
-const STAGE_ORDER: Stage[] = ["collect", "score", "generate", "assets", "qa"];
+type Stage = "collect" | "score" | "generate" | "assets" | "qa" | "persist";
+const STAGE_ORDER: Stage[] = ["collect", "score", "generate", "assets", "qa", "persist"];
 
 function startFrom(): number {
   const arg = process.argv.find((a) => a.startsWith("--from="));
@@ -98,12 +99,12 @@ export async function runWeekly(): Promise<QaReport> {
   const timings: Record<string, number> = {};
   const t0 = Date.now();
 
-  if (from <= 0) await step("Stufe 1/5: Recherche", async () => { timings.collect = Date.now(); await collect(); });
-  if (from <= 1) await step("Stufe 2/5: Scoring", async () => { timings.score = Date.now(); await score(); });
-  if (from <= 2) await step("Stufe 3/5: Inhalte generieren", async () => { timings.generate = Date.now(); await generate(); });
-  if (from <= 3) await step("Stufe 4/5: Assets (Bilder, Landing, E-Mail)", async () => { timings.assets = Date.now(); await generateAssets(); });
+  if (from <= 0) await step("Stufe 1/6: Recherche", async () => { timings.collect = Date.now(); await collect(); });
+  if (from <= 1) await step("Stufe 2/6: Scoring", async () => { timings.score = Date.now(); await score(); });
+  if (from <= 2) await step("Stufe 3/6: Inhalte generieren", async () => { timings.generate = Date.now(); await generate(); });
+  if (from <= 3) await step("Stufe 4/6: Assets (Bilder, Landing, E-Mail)", async () => { timings.assets = Date.now(); await generateAssets(); });
 
-  let report = await step("Stufe 5/5: QA + Fake-News-Check", () => runQa());
+  let report = await step("Stufe 5/6: QA + Fake-News-Check", () => runQa());
   timings.qa = Date.now();
 
   if (autoFix && !report.passed) {
@@ -114,6 +115,8 @@ export async function runWeekly(): Promise<QaReport> {
       timings.qa = Date.now();
     }
   }
+
+  if (from <= 5) await step("Stufe 6/6: Persistenz (Supabase)", async () => { timings.persist = Date.now(); await persist(false); });
 
   const durationSec = ((Date.now() - t0) / 1000).toFixed(1);
 

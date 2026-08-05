@@ -114,7 +114,8 @@
 - [x] Row-Level-Security aktivieren (User sieht nur eigene Daten; Free/Paid-Gating via `is_paid_subscriber()`)
 - [x] API-Hilfsfunktionen: `lib/supabase/client.ts`, `lib/supabase/server.ts` (Service-Role), `lib/auth.ts` (Session/Profil/Paid-Check), `src/proxy.ts` (Session-Refresh, Next-16-Proxy)
 - [ ] Auth-Flows: Registrierung, Login, E-Mail-Verifikation, Passwort-Reset (UI folgt in Phase 6, Resend in Phase 7)
-- [ ] Migration in echtes Supabase-Projekt anwenden + Keys in `.env` hinterlegen (Nutzer-Schritt)
+- [x] Migration in echtes Supabase-Projekt anwenden + Keys in `.env` hinterlegen (Nutzer-Schritt)
+- [x] Pipeline-Persistenz: `pipeline/persist.ts` (raw_articles + issues + issue_content in DB, Header/Social-PNG in Storage-Bucket `newsletter-assets`, Stufe 6/6 in `run_weekly.ts`, `--publish` für Freigabe)
 
 ## PHASE 6 — Frontend
 

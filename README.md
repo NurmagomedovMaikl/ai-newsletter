@@ -42,6 +42,7 @@ Alle Stufen schreiben ihre Ergebnisse nach `pipeline/output/` (gitignored).
 | 3. Inhalte generieren | `npm run pipeline:generate` | `newsletter_draft_<Datum>.json` |
 | 4. Assets (Bilder/Landing/E-Mail) | `npm run pipeline:assets` | `assets/`, `landing_texts.json`, `email_<Datum>.html` |
 | 5. QA + Fake-News-Check | `npm run pipeline:qa` | `qa_report_<Datum>.json` |
+| 6. Persistenz (Supabase) | `npm run pipeline:persist` | `persist_<Datum>.json`; DB: `raw_articles`/`issues`/`issue_content`, Storage-Bucket `newsletter-assets` |
 
 **Kompletter Wochen-Lauf:**
 
@@ -49,11 +50,12 @@ Alle Stufen schreiben ihre Ergebnisse nach `pipeline/output/` (gitignored).
 npm run pipeline:weekly                          # alles von Anfang
 npm run pipeline:weekly -- --from=assets         # ab einer bestimmten Stufe
 npm run pipeline:weekly -- --auto-fix            # kaputte Empfehlungs-Links automatisch entfernen
+npm run pipeline:persist -- --publish            # letzte Ausgabe veröffentlichen (Status: published)
 ```
 
 - QA-Prinzip **fail-closed**: ≥1 Fehler → Abbruch mit Exit 1, nichts wird veröffentlicht.
 - `--auto-fix` entfernt optionale Empfehlungen (Tool/Podcast/Video/Read) mit toten Links und wiederholt die QA.
-- Detailierte Architektur der Stufen: siehe `docs/DOKUMENTATION.md` (Sessions 3–8).
+- Detailierte Architektur der Stufen: siehe `docs/DOKUMENTATION.md` (Sessions 3–10).
 
 ## Verzeichnisstruktur
 

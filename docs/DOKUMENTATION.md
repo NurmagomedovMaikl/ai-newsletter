@@ -434,4 +434,44 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 
 
 
+## Session 10 — 05.08.2026 — Phase 5 abgeschlossen (Live-Verbindung + Pipeline-Persistenz)
+
+### Zugangsdaten & Konfiguration
+- Supabase-Projekt-URL: `https://znfeiqrhbrjkfsvmnjsi.supabase.co` (vom Nutzer geliefert; der zuvor aus dem JWT abgeleitete Ref `znfeiqhrbjkfsvmnjsi` war falsch → NXDOMAIN).
+- Neue Key-Typen: `NEXT_PUBLIC_SUPABASE_ANON_KEY` = publishable-Key (`sb_publishable_…`), `SUPABASE_SERVICE_ROLE_KEY` = secret-Key (`sb_secret_…`), alle in `.env`.
+- Migration `0001_init.sql` vom Nutzer im SQL Editor ausgeführt („Success. No rows returned") → Schema live.
+
+### Fehlerbehebung `.env`
+- **BOM-Problem:** `.env` hatte einen UTF-8-BOM am Dateianfang; Node `process.loadEnvFile` übersprungen dadurch Werte nach der ersten Zeile (`NEXT_PUBLIC_SUPABASE_URL` blieb leer). BOM entfernt → Parsing ok.
+
+### Neue Datei `pipeline/persist.ts` (Phase-5-Persistenz)
+| Funktion | Zweck |
+|---|---|
+| `upsertRawArticles` | Alle gescorcten Artikel (254) chunked (100) nach `raw_articles` (Upsert auf `id`) |
+| `upsertIssue` | Issue per `issue_date`-Upsert; Status `draft` (Default) oder `published` via `--publish` |
+| `uploadAssets` | Bucket `newsletter-assets` (public, auto-create) + Header/Social-PNG → `issues/<date>/…`, Upsert |
+| `buildSegments` | 9 Segmente; `intro` enthält zusätzlich `headerImageUrl`/`socialImageUrl` (kein Schema-Umbau nötig); `null`-Segmente (entfernte Empfehlungen nach Auto-Fix) werden übersprungen |
+| `replaceIssueContent` | `delete` + `insert` (idempotent bei Wiederholung) |
+
+- Free-Segmente: `intro`, `news`, `tool`. Paid-Segmente (`paid_only=true`): `prompt`, `image_training`, `deep_dive`, `podcast`, `video`, `read` (entspricht E-009/Phase-6-Plan).
+- npm-Script `pipeline:persist`; in `run_weekly.ts` als **Stufe 6/6** integriert (läuft nach QA, immer als Draft).
+
+### Live-Verifikation (end-to-end)
+- `raw_articles`: 254 ✓ · `issues`: 1 (draft) ✓ · `issue_content`: 8 Segmente (5 paid; `podcast` fehlt, da null) ✓
+- **RLS getestet:** Anon sieht 0 Issues (draft unsichtbar) und nur Free-Segmente (`intro`, `news`, `tool`) ✓
+- Storage public GET: `header.png` → `200 image/png` ✓
+
+### Technische Erkenntnisse
+1. `tsx`/ESM: top-level `const` werden vor einem nachfolgenden `process.loadEnvFile`-Aufruf ausgewertet → loadEnvFile immer **vor** die env-`const`s stellen.
+2. `issue_content.content` ist NOT NULL → Segmente mit null-Inhalt (Auto-Fix-Fälle) filtern, nicht einfügen.
+3. `raw_articles.id` ist text-PK (hashId) → Upsert auf `onConflict: "id"` funktioniert direkt.
+4. Wiederholtes Persistieren ist idempotent (Upserts + delete/insert + Storage-Upsert).
+
+### Nächste Schritte
+- Phase 6: Auth-UI (Login/Registrierung, Paywall-Gating auf Basis `isPaidUser`), Issue-Page rendert `issue_content` aus DB.
+- `--publish`-Flag nutzbar für manuelle Freigabe nach QA.
+- Cloudflare-API-Token rotieren (stand im Chat).
+
+
+
 

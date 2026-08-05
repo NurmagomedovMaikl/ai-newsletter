@@ -17,8 +17,9 @@ This block is written and re-added by `next dev` — verify at `node_modules/nex
 - TypeScript-Check separat: `npx.cmd tsc --noEmit`.
 
 ## Content-Pipeline (nach jeder Änderung an Pipeline-Code: tsc + lint)
-- `npm.cmd run pipeline:collect` / `:score` / `:generate` / `:assets` / `:qa` / `:weekly`
-- Weekly: `npm.cmd run pipeline:weekly -- --from=<stufe> --auto-fix`
+- `npm.cmd run pipeline:collect` / `:score` / `:generate` / `:assets` / `:qa` / `:weekly` / `:persist`
+- Weekly: `npm.cmd run pipeline:weekly -- --from=<stufe> --auto-fix` (Stufe 6/6 = Persistenz in Supabase)
+- Veröffentlichen: `npm.cmd run pipeline:persist -- --publish`
 
 ## Dokumentation
 - Entscheidungen und Session-Ergebnisse IMMER in `docs/DOKUMENTATION.md` protokollieren (chronologisch, neueste unten, Entscheidungen als E-00x).
