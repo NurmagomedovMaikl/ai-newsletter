@@ -474,4 +474,54 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 
 
 
+## Session 11 — 05.08.2026 — Phase 6 (Frontend + Auth + Paywall + Zahlung) umgesetzt
+
+### Neue Dateien
+| Datei | Zweck |
+|---|---|
+| `src/lib/db-types.ts` | Typisierte DB-Rows (`IssueRow`, `IssueContentRow`, `SubscriptionRow`, `ProfileRow`) |
+| `src/lib/issues.ts` | Server-Helper: veröffentlichte Ausgaben, Issue per Datum, Content (RLS-gated), neuestes Datum |
+| `src/lib/landing-copy.ts` | Landing-Texte (statisch, Englisch — ersetzt den gitignored Pipeline-Output) |
+| `src/lib/actions.ts` | Server Actions: `signIn`, `signUp`, `signOut`, `updatePreferences` |
+| `src/lib/lemonsqueezy.ts` | LS-API: `createCheckout` (Checkout-URL), `verifyWebhookSignature` (HMAC-SHA256), `lemonsqueezyConfigured` |
+| `src/components/header.tsx` | Sticky-Nav mit Session-Abhängigkeit (Login/Register vs. Dashboard/Sign out) |
+| `src/components/footer.tsx` | Footer (Link statt a) |
+| `src/components/auth-form.tsx` | Shared Login/Register-Form (`useActionState`) |
+| `src/components/preferences-form.tsx` | Einstellungen (Frequenz, Format, Themen-Chips) |
+| `src/components/issue-segments.tsx` | Segment-Renderer (intro/news/tool/prompt/image_training/deep_dive/podcast/video/read) |
+| `src/app/login/page.tsx`, `register/page.tsx` | Auth-Seiten (redirect bei Session) |
+| `src/app/auth/callback/route.ts` | Code-Exchange (E-Mail-Bestätigung) → `/dashboard` |
+| `src/app/dashboard/page.tsx` | Plan-Anzeige, Abos, Einstellungen, Archiv-Link, Upgrade |
+| `src/app/issues/page.tsx` | Archiv-Liste (Paid-Only ab alter Ausgabe) |
+| `src/app/issues/[date]/page.tsx` | Issue-Detail mit Free/Paid-Gating + `generateMetadata` |
+| `src/app/api/checkout/route.ts` | GET → erstellt LS-Checkout, redirect zur Checkout-URL (501 ohne Keys) |
+| `src/app/api/webhooks/lemonsqueezy/route.ts` | Webhook: Signatur-Verify, Subscriptions-Sync (via auth-Schema, E-Mail→User-ID), Plan-Update |
+
+### Paywall-Logik
+- Free (`paid_only=false`): `intro`, `news`, `tool`. Paid: `prompt`, `image_training`, `deep_dive`, `podcast`, `video`, `read`.
+- **Archiv-Regel:** Free-Nutzer lesen nur die **neueste** veröffentlichte Ausgabe (nur Free-Segmente, via RLS); ältere Ausgaben → Upgrade-Gate.
+- `isPaidUser()` = `profiles.plan = paid` ODER aktive Subscription.
+
+### Zahlung (env-gestützt, noch keine Keys)
+- Checkout/Webhook laufen bereits, geben aber ohne `LEMONSQUEEZY_*`-Keys 501 bzw. 401 (Signatur-Fehler) zurück.
+- Webhook mappt `customer_email` → `auth.users` (Service-Client mit `db.schema = "auth"`).
+
+### Technische Erkenntnisse (Next 16 + supabase-js)
+1. **Untypisierte Supabase-Clients:** `ReturnType<typeof createClient>` ergibt in supabase-js 2.x `never`-Rows bei `update()` → explizite Typen nötig (`createServiceClient(): SupabaseClient`, Daten als `as XRow[]`).
+2. `useActionState` statt `useFormState` (React 19); Server Actions geben serialisierbare `ActionResult` zurück.
+3. **Params sind Promises** in Next 15/16: `const { date } = await params`.
+4. `next/image` für Supabase-Storage: `images.remotePatterns [{ hostname: "**.supabase.co" }]` in `next.config.ts`.
+5. Build: alle Routen dynamisch (ƒ, Cookie-Nutzung), Proxy-Route korrekt erkannt.
+
+### Smoke-Test (next start, Port 3100)
+- `/` 200 · `/issues` 200 · `/login` 200 · `/register` 200 · `/dashboard` → 307 (Login) · `/issues/2026-08-05` → 404 (Draft, korrekt).
+- `tsc`, `eslint`, `next build` grün.
+
+### Nutzer-Schritte (Supabase Dashboard)
+- **Auth → URL Configuration:** Site URL auf `http://localhost:3000` (lokal) bzw. Produktions-URL setzen; Redirect-URLs: `http://localhost:3000/auth/callback` + `/login`/`/dashboard`.
+- LemonSqueezy: Store/Variant anlegen, `LEMONSQUEEZY_API_KEY`/`STORE_ID`/`VARIANT_ID`/`WEBHOOK_SECRET` in `.env`, Webhook-URL `…/api/webhooks/lemonsqueezy` eintragen.
+- Migration 0002 optional (Email in `profiles` speichern, falls Webhook ohne auth-Schema-Zugriff laufen soll).
+
+
+
 

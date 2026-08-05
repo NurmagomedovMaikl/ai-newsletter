@@ -119,25 +119,25 @@
 
 ## PHASE 6 — Frontend
 
-- [ ] Landing Page (Produktvorstellung, Free/Paid-Vergleich, CTA)
-- [ ] Registrierungs-Seite (Name, E-Mail, Passwort)
-- [ ] Login-Seite
-- [ ] Account-Dashboard:
-  - [ ] Plan-Anzeige (Free / Paid)
-  - [ ] Newsletter-Einstellungen (Frequenz, Themen, Formate)
-  - [ ] Abo-Verwaltung (Upgrade/Downgrade/Kündigen)
-  - [ ] Zugriff auf bisherige Ausgaben (Paid: komplette Archive)
-- [ ] Paid-Version:
-  - [ ] Newsletter-Archiv (alle früheren Ausgaben)
-  - [ ] Exklusive Segmente (z.B. erweiterte Prompt-Sammlung, Deep-Dive-Tutorials vollständig)
-- [ ] Free-Version:
-  - [ ] Aktuelle Ausgabe (eingeschränkt, z.B. nur News-Snippets + Tool of the Week)
-- [ ] Zahlungsflow:
-  - [ ] LemonSqueezy-Checkout integrieren (Monats-Abo)
-  - [ ] Webhook-Handler für Zahlungsstatus (LemonSqueezy → Supabase `subscriptions`)
+- [x] Landing Page (Produktvorstellung, Free/Paid-Vergleich, CTA)
+- [x] Registrierungs-Seite (Name, E-Mail, Passwort)
+- [x] Login-Seite
+- [x] Account-Dashboard:
+  - [x] Plan-Anzeige (Free / Paid)
+  - [x] Newsletter-Einstellungen (Frequenz, Themen, Formate)
+  - [ ] Abo-Verwaltung (Upgrade/Downgrade/Kündigen) — Upgrade-Link da, Kündigen/Verwaltung erst mit echten LS-Keys
+  - [x] Zugriff auf bisherige Ausgaben (Paid: komplette Archive)
+- [x] Paid-Version:
+  - [x] Newsletter-Archiv (alle früheren Ausgaben)
+  - [x] Exklusive Segmente (z.B. erweiterte Prompt-Sammlung, Deep-Dive-Tutorials vollständig)
+- [x] Free-Version:
+  - [x] Aktuelle Ausgabe (eingeschränkt, z.B. nur News-Snippets + Tool of the Week)
+- [x] Zahlungsflow:
+  - [x] LemonSqueezy-Checkout integrieren (Monats-Abo) — env-gestützt, Live-Test mit Keys offen
+  - [x] Webhook-Handler für Zahlungsstatus (LemonSqueezy → Supabase `subscriptions`) — env-gestützt, Live-Test mit Keys offen
   - [ ] Gratis-Testzeitraum optional
-- [ ] Responsive Design + Dark Mode (optional)
-- [ ] SEO: Meta-Tags, OG-Images
+- [x] Responsive Design + Dark Mode (optional)
+- [x] SEO: Meta-Tags, OG-Images
 
 ## PHASE 7 — Email Service
 

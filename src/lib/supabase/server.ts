@@ -1,5 +1,8 @@
 import { createServerClient } from "@supabase/ssr";
-import { createClient as createSupabaseClient } from "@supabase/supabase-js";
+import {
+  createClient as createSupabaseClient,
+  type SupabaseClient,
+} from "@supabase/supabase-js";
 import { cookies } from "next/headers";
 
 function env(name: string): string {
@@ -29,7 +32,7 @@ export async function createServerSupabase(): Promise<ReturnType<typeof createSe
 }
 
 /** Service-Role-Client für Admin/Pipeline-Operationen (Service Key nur server-seitig verwenden!). */
-export function createServiceClient(): ReturnType<typeof createSupabaseClient> {
+export function createServiceClient(): SupabaseClient {
   return createSupabaseClient(env("NEXT_PUBLIC_SUPABASE_URL"), env("SUPABASE_SERVICE_ROLE_KEY"), {
     auth: { persistSession: false, autoRefreshToken: false },
   });
