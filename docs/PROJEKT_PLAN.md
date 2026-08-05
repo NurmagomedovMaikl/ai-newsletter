@@ -141,19 +141,19 @@
 
 ## PHASE 7 — Email Service
 
-- [ ] Resend-Konto + API-Key
-- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation)
-- [ ] Transaktionsmails:
-  - [ ] Willkommens-E-Mail
-  - [ ] E-Mail-Verifikation
-  - [ ] Passwort-Reset
-  - [ ] Zahlungsbestätigung / Abo-Upgrade
-- [ ] Newsletter-Versand:
-  - [ ] E-Mail-Template rendern (aus `issue_content` + Assets)
-  - [ ] Versand-Logik: alle User mit aktivem Abo adressieren
-  - [ ] Free: Teaser-Version | Paid: Vollversion
-  - [ ] Unsubscribe-Link (Pflicht!) + Bounce-Handling
-  - [ ] Bei großer Liste: Brevo/MailerLite als Backup-Provider
+- [ ] Resend-Konto + API-Key (Nutzer-Schritt: Konto anlegen, Key in `.env`)
+- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation) (Nutzer-Schritt; Test mit `onboarding@resend.dev` möglich)
+- [x] Transaktionsmails (Best-Effort, `sendWelcomeEmailIfConfigured`/`sendUpgradeEmailIfConfigured`):
+  - [x] Willkommens-E-Mail (`renderWelcomeEmail`; nach `signUp` + `/auth/confirm`)
+  - [ ] E-Mail-Verifikation (von Supabase Auth übernommen — nutzt eigene Supabase-Mail, kein Resend; optional später Resend-Custom-SMTP)
+  - [ ] Passwort-Reset (von Supabase Auth übernommen; optional später via Resend)
+  - [x] Zahlungsbestätigung / Abo-Upgrade (`renderUpgradeEmail`; LemonSqueezy-Webhook `active`/`on_trial`)
+- [x] Newsletter-Versand:
+  - [x] E-Mail-Template rendern (aus `issue_content` + Assets) — `src/lib/email-render.ts`, gegen Live-Daten verifiziert (Free 3 Segmente / Paid 8)
+  - [x] Versand-Logik: `/api/send-weekly` (Bearer `CRON_SECRET`), Empfänger = auth.users ∩ profiles, `newsletter_deliveries`-Log, idempotent
+  - [x] Free: Teaser-Version | Paid: Vollversion (Paid = `plan=paid` ODER aktive Subscription)
+  - [x] Unsubscribe-Link (HMAC-Token, `/api/unsubscribe` → `format=unsubscribed`) + Bounce-Handling (Svix-Webhook → `status=bounced`)
+  - [ ] Bei großer Liste: Brevo/MailerLite als Backup-Provider (erst wenn Resend-Limit 3.000/Monat erreicht)
 
 ## PHASE 8 — Automation (der komplette Weekly-Workflow)
 

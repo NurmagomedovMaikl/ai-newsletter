@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from "next/server";
 import { createClient as createSupabaseClient, type SupabaseClient } from "@supabase/supabase-js";
 import { verifyWebhookSignature } from "@/lib/lemonsqueezy";
 import { createServiceClient } from "@/lib/supabase/server";
+import { sendUpgradeEmailIfConfigured } from "@/lib/email-flows";
 
 interface LsSubscriptionAttributes {
   customer_email: string;
@@ -80,6 +81,7 @@ async function syncSubscription(service: SupabaseClient, data: LsData, status: s
 
   if (status === "active" || status === "on_trial") {
     await service.from("profiles").update({ plan: "paid" }).eq("id", userId);
+    await sendUpgradeEmailIfConfigured(data.attributes.customer_email);
   }
 }
 

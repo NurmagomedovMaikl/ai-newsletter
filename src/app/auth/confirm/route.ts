@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from "next/server";
 import { createServerSupabase } from "@/lib/supabase/server";
+import { sendWelcomeEmailIfConfigured } from "@/lib/email-flows";
 
 /** Bestätigt E-Mail-Links (token_hash-Flow) und leitet weiter. */
 export async function GET(request: NextRequest) {
@@ -16,8 +17,13 @@ export async function GET(request: NextRequest) {
 
   if (token_hash && type) {
     const supabase = await createServerSupabase();
-    const { error } = await supabase.auth.verifyOtp({ type, token_hash });
-    if (!error) return NextResponse.redirect(redirectTo);
+    const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
+    if (!error && data.user?.email) {
+      const name =
+        (data.user.user_metadata?.full_name as string | undefined) ?? "";
+      await sendWelcomeEmailIfConfigured(data.user.email, name);
+      return NextResponse.redirect(redirectTo);
+    }
   }
   return NextResponse.redirect(`${request.nextUrl.origin}/login?error=confirm`);
 }

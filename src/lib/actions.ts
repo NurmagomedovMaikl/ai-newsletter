@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { createServerSupabase } from "@/lib/supabase/server";
 import { getSession } from "@/lib/auth";
+import { sendWelcomeEmailIfConfigured } from "@/lib/email-flows";
 
 export type ActionResult = { error?: string; ok?: string };
 
@@ -44,6 +45,7 @@ export async function signUp(_prev: ActionResult | undefined, formData: FormData
 
   // E-Mail-Bestätigung aktiv → Link-Mail; sonst direkt eingeloggt.
   if (data.session) {
+    await sendWelcomeEmailIfConfigured(email, fullName);
     revalidatePath("/", "layout");
     redirect("/dashboard");
   }

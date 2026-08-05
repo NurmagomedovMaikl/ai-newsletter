@@ -537,4 +537,58 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 
 
 
+## Session 13 — 05.08.2026 — Phase 7 (E-Mail-Versand via Resend) umgesetzt
+
+### Ziel
+- Wöchentliche Zustellung der veröffentlichten Ausgabe per E-Mail (Resend, Free-Tier: 3.000/Monat).
+- Abmeldung (Unsubscribe), Bounce-Handling, Willkommens-/Upgrade-Transaktionsmails, idempotenter Versand per Cron.
+
+### Neue Dateien
+| Datei | Zweck |
+|---|---|
+| `src/lib/email.ts` | Resend-Client (Singleton), `sendEmail` (wirft bei Fehler), `emailConfigured` (Keys vorhanden) |
+| `src/lib/unsubscribe.ts` | HMAC-SHA256-`signUnsubscribeToken(userId)` / `verifyUnsubscribeToken`; Secret = `UNSUBSCRIBE_SECRET` ?? Service-Role-Key |
+| `src/lib/email-render.ts` | `renderIssueEmail` — HTML-E-Mail aus `issue_content` (gem. `IssueRow`), Paid-Segmente mit `✨ PREMIUM`-Badge, Unsubscribe-Link unten |
+| `src/lib/email-templates.ts` | `renderWelcomeEmail` (nach Registrierung) + `renderUpgradeEmail` (nach Abo-Aktivierung) |
+| `src/lib/email-flows.ts` | Best-Effort-Helfer `sendWelcomeEmailIfConfigured`/`sendUpgradeEmailIfConfigured` (schweigen ohne Keys) |
+| `src/app/api/send-weekly/route.ts` | POST + Bearer-`CRON_SECRET`; lädt neueste published Issue + Content, baut Empfängerliste (auth.users → profiles → email_preferences), versendet, schreibt `newsletter_deliveries` (pending→sent/failed), idempotent pro issue+profile |
+| `src/app/api/unsubscribe/route.ts` | GET `?t=<Token>`; verifiziert HMAC-Token → `email_preferences.format = unsubscribed` → Bestätigungsseite |
+| `src/app/api/webhooks/resend/route.ts` | Svix-signierter Resend-Webhook (`RESEND_WEBHOOK_SECRET`): bei `email.bounced` alle pending/sent-Deliveries des Empfängers → `bounced` |
+| `src/lib/db-types.ts` | erweitert um `NewsletterDeliveryRow` |
+
+### Verdrahtung
+- `signUp` (bei bestehender Session) + `/auth/confirm` (nach E-Mail-Bestätigung) → Willkommens-Mail via `sendWelcomeEmailIfConfigured`.
+- LemonSqueezy-Webhook bei `active`/`on_trial` → Upgrade-Mail via `sendUpgradeEmailIfConfigured`.
+
+### Logik-Entscheidungen
+- **Empfängerliste:** auth.users (echte E-Mail) ∩ profiles; Abbruch bei `email_preferences.format = unsubscribed`.
+- **Paid-Empfänger:** `profiles.plan = paid` ODER aktive Subscription (`active`/`on_trial`) → bekommen alle Segmente, Free nur `intro`/`news`/`tool`.
+- **`send-weekly` ohne `CRON_SECRET`/ohne Resend-Key → 501** (env-gestützt, wie Phase 6); ohne Bearer-Token → 401.
+- **Unsubscribe ohne Token → 400**; manipuliertes Token → ungültig (HMAC).
+
+### Technische Erkenntnisse
+1. Resend-SDK (`emails.send`) kennt kein `reply_to`-Feld in den Typen → Option entfernt.
+2. Unbenutzter Typ-Import in `email-render.ts` → eslint warning, entfernt.
+3. Untypisierte Supabase-Client-Rows: `.map()` auf `any`-Daten gibt TS7006 → explizite `as`-Typen nach dem Select.
+4. Svix-Webhook-Verifikation: Header `svix-id`/`svix-timestamp`/`svix-signature` + `RESEND_WEBHOOK_SECRET`; `svix`-Paket installiert (390 Pakete, 0 Vulns).
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint .` ✓ · `next build` ✓ (neue Routen `send-weekly`, `unsubscribe`, `webhooks/resend` als ƒ).
+- Smoke-Test (next start, Port 3101): `/api/send-weekly` → 501 (kein CRON_SECRET) ✓ · `/api/unsubscribe` ohne Token → 400 ✓ · `/api/webhooks/resend` → 501 (kein WEBHOOK_SECRET) ✓.
+- Renderer gegen Live-Daten getestet: FULL = 8 Segmente, 14.774 Bytes HTML, enthält `PREMIUM` ✓; FREE = 3 Segmente, 7.320 Bytes, kein `PREMIUM` ✓; Unsubscribe-Token-Roundtrip ✓, manipuliertes Token → null ✓.
+
+### `.env`-Neuaufnahmen (in `.env.example` dokumentiert)
+- `RESEND_WEBHOOK_SECRET` (Svix-Signing-Secret, Resend → Webhooks)
+- `CRON_SECRET` (schützt `/api/send-weekly`)
+- `UNSUBSCRIBE_SECRET` (HMAC-Signatur der Unsubscribe-Links)
+- `NEWSLETTER_FROM_EMAIL`-Hinweis: Test mit `onboarding@resend.dev`; für echten Versand eigene Domain verifizieren (SPF/DKIM).
+
+### Nutzer-Schritte (Phase 7)
+1. Resend-Konto anlegen → API-Key unter Settings → API Keys (`re_…`) in `.env` als `RESEND_API_KEY`.
+2. **Domain verifizieren** (Resend → Domains → DNS: SPF/DKIM Einträge beim Provider setzen) für echte Absender; zum Testen `NEWSLETTER_FROM_EMAIL=onboarding@resend.dev` (sendet nur an die eigene E-Mail).
+3. `CRON_SECRET` + `UNSUBSCRIBE_SECRET` mit langen Zufallsstrings belegen.
+4. Webhook anlegen (Resend → Webhooks → URL `…/api/webhooks/resend`, Events: `email.bounced`, `email.delivered`) → Signing-Secret als `RESEND_WEBHOOK_SECRET`.
+5. Smoke-Test: `POST /api/send-weekly` mit `Authorization: Bearer <CRON_SECRET>` → Test-Mail an eigene Adresse.
+6. Danach Phase 8: Vercel-Cron (wöchentlich, nach Pipeline-Lauf) auf `/api/send-weekly`.
+
 
