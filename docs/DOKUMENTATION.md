@@ -524,4 +524,17 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 
 
 
+## Session 12 — 05.08.2026 — Phase 6 E2E-Test durch Nutzer bestanden
+
+- `/auth/confirm/route.ts` ergänzt (token_hash-Flow für E-Mail-Bestätigung).
+- **Nutzer hat Block A Schritt 1–5 selbst getestet und bestanden:** Dev-Server, Supabase-URL-Konfiguration (Site URL `http://localhost:3000`, Redirect `/auth/callback`), Ausgabe per `npm run pipeline:persist -- --publish` veröffentlicht, Registrierung + E-Mail-Bestätigung + Login, Free-Gating (nur aktuelle Ausgabe, nur intro/news/tool) verifiziert.
+- Entscheidung (Nutzer): **Cloudflare-Token wird NICHT rotiert** (wird beibehalten trotz Chat-Exposition — bewusst in Kauf genommen).
+- Entscheidung (Nutzer): **LemonSqueezy (Phase-6-Zahlung) auf später verschoben.**
+
+### Nächste Schritte
+- Phase 7: Resend-E-Mail-Versand (Subscriber-Liste = `newsletter_deliveries`/`profiles`, Versand der gerenderten `email_<Datum>.html`).
+- Phase 8: Deployment (Vercel) + Wochen-Cron (z.B. Vercel Cron → `/api/cron/weekly`).
+
+
+
 
