@@ -395,6 +395,12 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 - Damit ist der komplette Wochen-Workflow (Recherche → Scoring → Inhalte → Assets → QA) inkl. Selbstheilung validiert.
 - Hinweis: News-Sektionen werden bewusst NICHT automatisch gefixt — nur optionale Empfehlungen (tool/podcast/video/read).
 
+### README + erster Git-Commit (05.08.2026)
+- `README.md` neu geschrieben (Projektübersicht, Pipeline-Befehle, Struktur, Status).
+- `.gitignore` verschärft: gesamter `pipeline/output/`-Ordner ignoriert (nur `.gitkeep`).
+- **Initial-Commit `39235cd`** (37 Dateien): kompletter Stand inkl. Doku.
+- **Commit-Cadence ab jetzt:** nach jeder abgeschlossenen Arbeitseinheit committen — Regel in `AGENTS.md` hinterlegt.
+
 
 
 
