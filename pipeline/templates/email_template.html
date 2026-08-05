@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="x-apple-disable-message-reformatting" />
+    <title>{{EMAIL_TITLE}}</title>
+  </head>
+  <body style="margin:0;padding:0;background-color:#f4f4f5;font-family:Arial,Helvetica,sans-serif;color:#1f2937;">
+    <span style="display:none;max-height:0;overflow:hidden;">{{PREHEADER}}</span>
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background-color:#f4f4f5;padding:24px 0;">
+      <tr>
+        <td align="center">
+          <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background-color:#ffffff;border-radius:12px;overflow:hidden;">
+            <!-- HEADER -->
+            <tr>
+              <td style="padding:0;background-color:#111827;">
+                <img src="{{HEADER_IMAGE_URL}}" alt="{{HEADER_ALT}}" width="600" style="display:block;width:100%;height:auto;border:0;" />
+              </td>
+            </tr>
+            <tr>
+              <td style="padding:32px 32px 8px 32px;">
+                <p style="margin:0 0 8px 0;font-size:12px;letter-spacing:1px;text-transform:uppercase;color:#6b7280;">AI Newsletter — Weekly Edition</p>
+                <h1 style="margin:0 0 16px 0;font-size:28px;line-height:1.2;color:#111827;">{{TITLE}}</h1>
+                <p style="margin:0;font-size:16px;line-height:1.6;color:#374151;">{{INTRO}}</p>
+              </td>
+            </tr>
+
+            <!-- NEWS SNIPPETS -->
+            <tr>
+              <td style="padding:24px 32px 8px 32px;">
+                <h2 style="margin:0 0 12px 0;font-size:20px;color:#111827;">Top AI News</h2>
+                {{NEWS_ITEMS}}
+              </td>
+            </tr>
+
+            <!-- TOOL OF THE WEEK -->
+            {{TOOL_BLOCK}}
+
+            <!-- PROMPT OF THE WEEK -->
+            {{PROMPT_BLOCK}}
+
+            <!-- IMAGE PROMPT TRAINING -->
+            {{IMAGE_TRAINING_BLOCK}}
+
+            <!-- DEEP DIVE -->
+            {{DEEP_DIVE_BLOCK}}
+
+            <!-- PODCAST / VIDEO / READ -->
+            {{EXTRA_BLOCKS}}
+
+            <!-- FOOTER -->
+            <tr>
+              <td style="padding:24px 32px 32px 32px;border-top:1px solid #e5e7eb;">
+                <p style="margin:0 0 8px 0;font-size:12px;color:#6b7280;">You received this email because you subscribed to the AI Newsletter.</p>
+                <p style="margin:0;font-size:12px;color:#6b7280;">
+                  <a href="{{UNSUBSCRIBE_URL}}" style="color:#2563eb;text-decoration:underline;">Unsubscribe</a>
+                  &nbsp;·&nbsp; AI Newsletter
+                </p>
+              </td>
+            </tr>
+          </table>
+        </td>
+      </tr>
+    </table>
+  </body>
+</html>
