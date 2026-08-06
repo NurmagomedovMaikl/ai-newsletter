@@ -51,18 +51,16 @@ export async function POST(request: NextRequest) {
 
   const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-  const auth = createSupabaseClient(url, key, {
-    db: { schema: "auth" },
-    auth: { persistSession: false, autoRefreshToken: false },
-  });
-  const { data: user } = await auth.from("users").select("id").eq("email", payload.data.to[0]).limit(1).maybeSingle();
+  const auth = createSupabaseClient(url, key, { auth: { persistSession: false, autoRefreshToken: false } });
+  const { data: page } = await auth.auth.admin.listUsers({ perPage: 1000, page: 1 });
+  const user = page?.users.find((u) => u.email === payload.data!.to![0]);
   if (!user) return NextResponse.json({ ok: true, ignored: "user not found" });
 
   const service = createServiceClient();
   await service
     .from("newsletter_deliveries")
     .update(update())
-    .eq("profile_id", user.id as string)
+    .eq("profile_id", user.id)
     .in("status", ["pending", "sent", "delivered"]);
 
   return NextResponse.json({ ok: true });

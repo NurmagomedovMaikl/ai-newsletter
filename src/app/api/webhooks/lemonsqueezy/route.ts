@@ -44,22 +44,20 @@ function mapStatus(status: string): string {
   }
 }
 
-/** Service-Client mit Zugriff auf das auth-Schema (User-E-Mail → profile_id). */
-/** Service-Client mit Zugriff auf das auth-Schema (User-E-Mail → profile_id). */
+/** Service-Client mit Zugriff auf die Auth-Admin-API (User-E-Mail → profile_id). */
 function authClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      db: { schema: "auth" },
       auth: { persistSession: false, autoRefreshToken: false },
     },
   );
 }
 
 async function findUserIdByEmail(email: string): Promise<string | null> {
-  const { data } = await authClient().from("users").select("id").eq("email", email).limit(1).maybeSingle();
-  return (data?.id as string | undefined) ?? null;
+  const { data } = await authClient().auth.admin.listUsers({ perPage: 1000, page: 1 });
+  return data?.users.find((u) => u.email === email)?.id ?? null;
 }
 
 async function syncSubscription(service: SupabaseClient, data: LsData, status: string) {

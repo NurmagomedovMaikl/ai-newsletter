@@ -10,13 +10,12 @@ function siteUrl(): string {
   return process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:3000";
 }
 
-/** Service-Client mit Zugriff auf das auth-Schema (User-E-Mail). */
+/** Service-Client mit Zugriff auf die Auth-Admin-API (User-E-Mails). */
 function authClient() {
   return createSupabaseClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.SUPABASE_SERVICE_ROLE_KEY!,
     {
-      db: { schema: "auth" },
       auth: { persistSession: false, autoRefreshToken: false },
     },
   );
@@ -30,11 +29,11 @@ interface Recipient {
 }
 
 async function collectRecipients(service: SupabaseClient): Promise<Recipient[]> {
-  const { data: usersRaw } = await authClient()
-    .from("users")
-    .select("id, email")
-    .not("email", "is", null);
-  const users = (usersRaw ?? []) as { id: string; email: string }[];
+  const { data: page, error } = await authClient().auth.admin.listUsers({ perPage: 1000, page: 1 });
+  if (error) throw new Error(`auth.admin.listUsers: ${error.message}`);
+  const users = (page?.users ?? [])
+    .filter((u) => u.email && u.email_confirmed_at)
+    .map((u) => ({ id: u.id, email: u.email! }));
 
   const { data: profilesRaw } = await service
     .from("profiles")
