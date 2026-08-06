@@ -59,6 +59,43 @@ export async function signOut(): Promise<void> {
   redirect("/");
 }
 
+/** E-Mail anfordern, um das Passwort zurückzusetzen (Supabase sendet den Link). */
+export async function requestPasswordReset(
+  _prev: ActionResult | undefined,
+  formData: FormData,
+): Promise<ActionResult> {
+  const email = String(formData.get("email") ?? "").trim();
+  if (!email) return { error: "Bitte gib deine E-Mail ein." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.auth.resetPasswordForEmail(email, {
+    redirectTo: `${siteUrl()}/auth/confirm?next=/auth/reset-password`,
+  });
+  if (error) return { error: error.message };
+
+  // Bewusst neutral formuliert (keine Auskunft über existierende Konten).
+  return { ok: "Falls die Adresse registriert ist, haben wir dir einen Link geschickt." };
+}
+
+/** Neues Passwort setzen (nur mit gültiger Session, z.B. nach Recovery-Link). */
+export async function updatePassword(
+  _prev: ActionResult | undefined,
+  formData: FormData,
+): Promise<ActionResult> {
+  const user = await getSession();
+  if (!user) return { error: "Sitzung abgelaufen — bitte den Reset-Link erneut anfordern." };
+
+  const password = String(formData.get("password") ?? "");
+  if (password.length < 8) return { error: "Passwort muss mindestens 8 Zeichen lang sein." };
+
+  const supabase = await createServerSupabase();
+  const { error } = await supabase.auth.updateUser({ password });
+  if (error) return { error: error.message };
+
+  revalidatePath("/", "layout");
+  return { ok: "Passwort geändert. Du kannst dich jetzt mit dem neuen Passwort anmelden." };
+}
+
 export async function updatePreferences(
   _prev: ActionResult | undefined,
   formData: FormData,

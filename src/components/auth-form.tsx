@@ -50,6 +50,16 @@ export function AuthForm({ mode }: { mode: "login" | "register" }) {
             minLength={8}
             className={inputClass}
           />
+          {!isRegister && (
+            <div className="mt-1.5 text-right">
+              <Link
+                href="/auth/reset-password"
+                className="text-xs font-medium text-zinc-500 hover:text-zinc-900 hover:underline dark:text-zinc-400 dark:hover:text-zinc-100"
+              >
+                Forgot password?
+              </Link>
+            </div>
+          )}
         </div>
 
         {state?.error && (

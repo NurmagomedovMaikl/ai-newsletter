@@ -19,9 +19,11 @@ export async function GET(request: NextRequest) {
     const supabase = await createServerSupabase();
     const { data, error } = await supabase.auth.verifyOtp({ type, token_hash });
     if (!error && data.user?.email) {
-      const name =
-        (data.user.user_metadata?.full_name as string | undefined) ?? "";
-      await sendWelcomeEmailIfConfigured(data.user.email, name);
+      if (type === "signup") {
+        const name =
+          (data.user.user_metadata?.full_name as string | undefined) ?? "";
+        await sendWelcomeEmailIfConfigured(data.user.email, name);
+      }
       return NextResponse.redirect(redirectTo);
     }
   }
