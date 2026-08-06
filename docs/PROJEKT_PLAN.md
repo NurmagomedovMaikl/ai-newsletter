@@ -141,8 +141,8 @@
 
 ## PHASE 7 — Email Service
 
-- [ ] Resend-Konto + API-Key (Nutzer-Schritt: Konto anlegen, Key in `.env`)
-- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation) (Nutzer-Schritt; Test mit `onboarding@resend.dev` möglich)
+- [x] Resend-Konto + API-Key (live, Test-Konto; Key in `.env` + Vercel + GitHub-Secrets)
+- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation) — Test mit `onboarding@resend.dev` verifiziert; eigene Domain = Nutzer-Schritt
 - [x] Transaktionsmails (Best-Effort, `sendWelcomeEmailIfConfigured`/`sendUpgradeEmailIfConfigured`):
   - [x] Willkommens-E-Mail (`renderWelcomeEmail`; nach `signUp` + `/auth/confirm`)
   - [ ] E-Mail-Verifikation (von Supabase Auth übernommen — nutzt eigene Supabase-Mail, kein Resend; optional später Resend-Custom-SMTP)
@@ -186,7 +186,7 @@
 - [ ] Erste "echte" Newsletter-Ausgabe erzeugen und versenden
 - [ ] Landing-Page + SEO final
 - [ ] Legal: Impressum, Datenschutzerklärung (Pflicht in DE), AGB, Widerruf
-- [ ] Deploy auf Vercel (Production)
+- [x] Deploy auf Vercel (Production) — live unter `https://ai-newsletter-sage.vercel.app` (Session 15)
 - [ ] Monitoring einrichten (Fehler-Logs, E-Mail-Deliverability, Downtime)
 
 ---

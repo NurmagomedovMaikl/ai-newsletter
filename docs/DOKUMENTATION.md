@@ -637,3 +637,30 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 6. Test: `workflow_dispatch` im GitHub-UI auslösen oder `npm run pipeline:weekly -- --publish` lokal → danach `POST /api/send-weekly` mit Bearer `CRON_SECRET`.
 
 
+
+## Session 15 — 05.08.2026 — Live-Deployment + erster E-Mail-Versand (Phase 7/8 verifiziert)
+
+### Was gemacht wurde (gemeinsam mit dem Nutzer)
+1. **GitHub:** Privates Repo `NurmagomedovMaikl/ai-newsletter` angelegt, `git remote origin` gesetzt, `main` gepusht (Remote: `https://github.com/NurmagomedovMaikl/ai-newsletter.git`).
+2. **Vercel:** Repo importiert → Deployment live unter **`https://ai-newsletter-sage.vercel.app`** (Production-Domain; Preview-Domains `ai-newsletter-git-main-blinchik.vercel.app`, `ai-newsletter-gf0cxsur9-blinchik.vercel.app`). PC-Neustart braucht KEIN Redeploy (läuft auf Vercel-Servern).
+3. **Vercel Environment Variables** (Production + Preview, „Sensitive" = an): `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_ANON_KEY`, `SUPABASE_SERVICE_ROLE_KEY`, `NEXT_PUBLIC_SITE_URL=https://ai-newsletter-sage.vercel.app`, `CRON_SECRET`, `UNSUBSCRIBE_SECRET`; später ergänzt: `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL=onboarding@resend.dev`, `ADMIN_EMAIL=maikdrum1@gmail.com`, `RESEND_WEBHOOK_SECRET`.
+4. **Supabase:** Auth → URL Configuration: Site URL + Redirect-URLs auf die Produktions-Domain umgestellt (localhost bleibt zusätzlich). Migration `0002_email_stats.sql` im SQL Editor ausgeführt („Success").
+5. **GitHub Secrets** (Settings → Secrets → Actions): `NEXT_PUBLIC_SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY`, `GROQ_API_KEY`, `OPENROUTER_API_KEY`, `CLOUDFLARE_ACCOUNT_ID`, `CLOUDFLARE_API_TOKEN`, `CRON_SECRET`, `NEWSLETTER_APP_URL=https://ai-newsletter-sage.vercel.app` (optional für später: `NEWSAPI_KEY`, `GOOGLE_FACTCHECK_API_KEY`, `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, `ADMIN_EMAIL`).
+6. **Resend:** Konto angelegt (E-Mail `maikdrum1@gmail.com`), API-Key `re_cyQX…` erstellt, Webhook `https://ai-newsletter-sage.vercel.app/api/webhooks/resend` mit Events `email.bounced`/`delivered`/`opened`/`clicked`, Signing-Secret `whsec_…` → `.env` + Vercel.
+
+### Bug gefunden + behoben (Commit `4864bd1`)
+- **Symptom:** `/api/send-weekly` lieferte `recipients: 0`, obwohl 2 bestätigte Nutzer existierten.
+- **Ursache:** `createClient(url, key, { db: { schema: "auth" } }).from("users")` → PostgREST-Fehler **„Invalid schema: auth"** (die Schema-Abfrage funktioniert in diesem Supabase-Projekt nicht). Der Fehler wurde still geschluckt → leere Empfängerliste.
+- **Fix:** Auf die **Auth-Admin-API** umgestellt: `client.auth.admin.listUsers({ perPage: 1000, page: 1 })`. Betroffen und gefixt: `send-weekly/route.ts`, `webhooks/resend/route.ts`, `webhooks/lemonsqueezy/route.ts` (dort plus Duplikat-Kommentar entfernt). WICHTIG: Der frühere `db.schema = "auth"`-Ansatz war bislang **nie live** verifiziert (LemonSqueezy-Webhook wurde nie ausgelöst).
+- Empfängerfilter: nur Nutzer mit `email` **und** `email_confirmed_at` (kein Versand an Unbestätigte).
+
+### Erster Test-Versand (live)
+- `POST /api/send-weekly` (Bearer `CRON_SECRET`): `recipients: 2`, **`sent: 1`** (`maikdrum1@gmail.com`), `failed: 1` (`harob90245@bora4d.com` — Test-Regel `onboarding@resend.dev` erlaubt nur die eigene Adresse).
+- Nutzer bestätigte Empfang der Test-Ausgabe (Issue 2026-08-05).
+
+### Erkenntnisse / offene Punkte
+- **Test-Absender `onboarding@resend.dev` sendet NUR an die eigene Adresse** — für echte Abonnenten eigene Domain in Resend verifizieren (SPF/DKIM) + `NEWSLETTER_FROM_EMAIL` auf `no-reply@<domain>` umstellen.
+- Offen: Unsubscribe-Link-Endtest durch Nutzer; Webhook-Statistik (`delivered`/`opened`/`clicked`) anhand der Test-Mail prüfen; optionale GitHub-Secrets nachtragen.
+- Lokale `.env` enthält jetzt echte Keys (Resend, CRON/UNSUBSCRIBE-Secrets, ADMIN_EMAIL); bleibt gitignored.
+
+
