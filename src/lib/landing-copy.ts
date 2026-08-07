@@ -38,7 +38,7 @@ export const landingCopy = {
     },
     paid: {
       title: "Premium Subscription",
-      price: "$9.99/month",
+      price: "€5.00/month",
       description: "Unlock full access to the archive and every exclusive segment.",
       features: [
         "Full access to the complete archive",
