@@ -35,6 +35,7 @@ export interface SubscriptionRow {
   status: string;
   plan_variant: string | null;
   current_period_end: string | null;
+  ends_at: string | null;
 }
 
 export interface ProfileRow {

@@ -71,3 +71,32 @@ export function verifyWebhookSignature(rawBody: string, signature: string): bool
   const b = Buffer.from(signature, "utf8");
   return a.length === b.length && timingSafeEqual(a, b);
 }
+
+/**
+ * Signierte Customer-Portal-URL für eine Subscription (24h gültig).
+ * Liefert null ohne API-Key oder wenn die Subscription nicht existiert.
+ */
+export async function getCustomerPortalUrl(subscriptionId: string): Promise<string | null> {
+  const apiKey = process.env.LEMONSQUEEZY_API_KEY;
+  if (!apiKey || !subscriptionId) return null;
+
+  const res = await fetch(`${LS_API}/subscriptions/${subscriptionId}`, {
+    headers: {
+      Authorization: `Bearer ${apiKey}`,
+      Accept: "application/vnd.api+json",
+    },
+    cache: "no-store",
+  });
+  if (!res.ok) return null;
+
+  const json = (await res.json()) as {
+    data?: { attributes?: { urls?: { customer_portal?: string | null } } };
+  };
+  return json.data?.attributes?.urls?.customer_portal ?? null;
+}
+
+/** Basis-URL des Customer Portals (Fallback ohne API-Key, via LEMONSQUEEZY_STORE_URL). */
+export function storeBillingUrl(): string | null {
+  const base = process.env.LEMONSQUEEZY_STORE_URL;
+  return base ? `${base.replace(/\/+$/, "")}/billing` : null;
+}

@@ -9,6 +9,7 @@ interface LsSubscriptionAttributes {
   status: string;
   variant_name: string | null;
   renews_at: string | null;
+  ends_at: string | null;
 }
 
 interface LsData {
@@ -73,6 +74,7 @@ async function syncSubscription(service: SupabaseClient, data: LsData, status: s
       status,
       plan_variant: data.attributes.variant_name,
       current_period_end: data.attributes.renews_at,
+      ends_at: data.attributes.ends_at,
     },
     { onConflict: "lemonsqueezy_subscription_id" },
   );
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
   if (eventName === "subscription_cancelled" || eventName === "subscription_expired" || eventName === "subscription_paused") {
     await service
       .from("subscriptions")
-      .update({ status })
+      .update({ status, ends_at: data.attributes.ends_at })
       .eq("lemonsqueezy_subscription_id", data.id);
     // Plan auf free setzen, sofern keine andere aktive Subscription existiert.
     const { count } = await service

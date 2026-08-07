@@ -44,6 +44,7 @@ export function PreferencesForm({
         <select id="format" name="format" defaultValue={format} className={inputClass}>
           <option value="full">Full issue</option>
           <option value="teaser">Teaser (free)</option>
+          <option value="unsubscribed">Unsubscribed (no emails)</option>
         </select>
       </div>
 
