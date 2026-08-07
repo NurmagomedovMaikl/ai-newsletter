@@ -5,7 +5,8 @@ import { createServiceClient } from "@/lib/supabase/server";
 import { sendUpgradeEmailIfConfigured } from "@/lib/email-flows";
 
 interface LsSubscriptionAttributes {
-  customer_email: string;
+  user_email?: string | null;
+  customer_email?: string | null;
   status: string;
   variant_name: string | null;
   renews_at: string | null;
@@ -56,15 +57,20 @@ function authClient() {
   );
 }
 
+function customerEmail(attributes: LsSubscriptionAttributes): string | undefined {
+  return attributes.user_email ?? attributes.customer_email ?? undefined;
+}
+
 async function findUserIdByEmail(email: string): Promise<string | null> {
   const { data } = await authClient().auth.admin.listUsers({ perPage: 1000, page: 1 });
   return data?.users.find((u) => u.email === email)?.id ?? null;
 }
 
 async function syncSubscription(service: SupabaseClient, data: LsData, status: string) {
-  const userId = await findUserIdByEmail(data.attributes.customer_email);
+  const email = customerEmail(data.attributes);
+  const userId = email ? await findUserIdByEmail(email) : null;
   if (!userId) {
-    console.warn(`[WEBHOOK] Kein User für E-Mail ${data.attributes.customer_email}`);
+    console.warn(`[WEBHOOK] Kein User für E-Mail ${email}`);
     return;
   }
   await service.from("subscriptions").upsert(
@@ -81,7 +87,7 @@ async function syncSubscription(service: SupabaseClient, data: LsData, status: s
 
   if (status === "active" || status === "on_trial") {
     await service.from("profiles").update({ plan: "paid" }).eq("id", userId);
-    await sendUpgradeEmailIfConfigured(data.attributes.customer_email);
+    if (email) await sendUpgradeEmailIfConfigured(email);
   }
 }
 
@@ -111,10 +117,10 @@ export async function POST(request: NextRequest) {
     const { count } = await service
       .from("subscriptions")
       .select("id", { count: "exact", head: true })
-      .eq("profile_id", (await findUserIdByEmail(data.attributes.customer_email)) ?? "")
+      .eq("profile_id", (await findUserIdByEmail(customerEmail(data.attributes) ?? "")) ?? "")
       .in("status", ["active", "on_trial"]);
     if ((count ?? 0) === 0) {
-      const userId = await findUserIdByEmail(data.attributes.customer_email);
+      const userId = await findUserIdByEmail(customerEmail(data.attributes) ?? "");
       if (userId) await service.from("profiles").update({ plan: "free" }).eq("id", userId);
     }
   } else {

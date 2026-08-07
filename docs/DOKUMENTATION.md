@@ -801,4 +801,29 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 4. Nach Store-Aktivierung (Identitätsprüfung) später: Live-Key statt Test-Key in `.env` + Vercel.
 5. Hinweis: LS-Produktbeschreibung ggf. um den €5-Preis bereinigen (falls die Chat-Beschreibung mit $9.99 übernommen wurde).
 
+## Session 20 — 07.08.2026 — Bugfix: LemonSqueezy-Webhook las falsches E-Mail-Feld (`customer_email` → `user_email`)
+
+### Symptom
+- Die Test-Subscription existierte bei LemonSqueezy, aber in Supabase blieb `subscriptions` leer und `profiles.plan` = `free`. Der Webhook wurde laut LS-Dashboard erfolgreich zugestellt (HTTP 200), machte aber still nichts.
+- Damit war genau der in Session 15 notierte Vorbehalt bestätigt: Der Webhook war bislang **nie live** ausgelöst worden (Session 15: „dort war der frühere `db.schema = 'auth'`-Ansatz … nie live verifiziert").
+
+### Ursache
+- Der Webhook-Handler las die E-Mail aus `data.attributes.customer_email`. LemonSqueezy sendet in `subscription_*`-Webhooks aber **`data.attributes.user_email`** (kein `customer_email`).
+- Folge: `findUserIdByEmail(undefined)` → kein Match in `auth.users` → `console.warn` + `return` (kein Upsert, kein Plan-Update, kein Fehler nach außen).
+
+### Fix
+- `src/app/api/webhooks/lemonsqueezy/route.ts`:
+  - Interface `LsSubscriptionAttributes`: `user_email` (und `customer_email` als optionales Fallback-Feld) ergänzt.
+  - Neue Helper-Funktion `customerEmail()` → liefert `user_email ?? customer_email` (rückwärtskompatibel).
+  - Alle drei Verwendungsstellen (Sync `syncSubscription`, Cancel/Expired/Paused-Zweig, Plan-Reset) auf `customerEmail(...)` umgestellt.
+
+### Verifikation
+- `tsc --noEmit` konnte in dieser Session **nicht** ausgeführt werden (kein `node`/`npm` im Shell-PATH) → ersatzweise Code-Review per Read; Rest in Session 21.
+- Lint/Build & Live-Webhook-Test in Vercel-Logs folgen.
+
+### Offen / Nächste Schritte
+1. `npm run lint` + `tsc --noEmit` (bzw. `next build`) lokal gegenprüfen.
+2. **Deploy auf Vercel** → dann Live-End-to-End: Test-Checkout → Webhook → `subscriptions`-Zeile + `profiles.plan=paid`.
+3. Alternativ signierten Test-Webhook direkt an die Live-URL senden (Payload nachbauen, mit `LEMONSQUEEZY_WEBHOOK_SECRET` signieren) → DB prüfen.
+
 
