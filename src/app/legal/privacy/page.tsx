@@ -10,13 +10,13 @@ export default function PrivacyPage() {
       <p>
         Verantwortlicher im Sinne der Datenschutz-Grundverordnung (DSGVO):
         <br />
-        [Vorname Nachname]
+        Maik Löwen
         <br />
-        [Straße, Hausnummer]
+        Hahnenfeldstr. 12b
         <br />
-        [PLZ Ort]
+        32427 Minden
         <br />
-        E-Mail: [E-Mail-Adresse]
+        E-Mail: maikdrum1@gmail.com
       </p>
 
       <h2>2. Überblick über die Datenverarbeitung</h2>
@@ -104,7 +104,7 @@ export default function PrivacyPage() {
         <li>Widerruf erteilter Einwilligungen mit Wirkung für die Zukunft</li>
       </ul>
       <p>
-        Zur Ausübung Ihrer Rechte genügt eine E-Mail an [E-Mail-Adresse]. Sie haben außerdem das
+        Zur Ausübung Ihrer Rechte genügt eine E-Mail an maikdrum1@gmail.com. Sie haben außerdem das
         Recht, sich bei einer Datenschutz-Aufsichtsbehörde zu beschweren (Art. 77 DSGVO).
       </p>
 

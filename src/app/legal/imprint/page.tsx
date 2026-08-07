@@ -8,24 +8,22 @@ export default function ImprintPage() {
     <LegalPage title="Impressum" updated="07.08.2026">
       <h2>Angaben gemäß § 5 DDG</h2>
       <p>
-        [Vorname Nachname]
+        Maik Löwen
         <br />
-        [Straße, Hausnummer]
+        Hahnenfeldstr. 12b
         <br />
-        [PLZ Ort]
+        32427 Minden
         <br />
         Deutschland
       </p>
 
       <h2>Kontakt</h2>
       <p>
-        E-Mail: [E-Mail-Adresse]
-        <br />
-        Telefon: [Telefonnummer — optional]
+        E-Mail: maikdrum1@gmail.com
       </p>
 
       <h2>Verantwortlich für den Inhalt nach § 18 Abs. 2 MStV</h2>
-      <p>[Vorname Nachname], Anschrift wie oben.</p>
+      <p>Maik Löwen, Anschrift wie oben.</p>
 
       <h2>Hinweis zur EU-Streitschlichtung</h2>
       <p>

@@ -9,8 +9,9 @@ export default function TermsPage() {
       <h2>1. Geltungsbereich</h2>
       <p>
         Diese Allgemeinen Geschäftsbedingungen (AGB) gelten für die Nutzung des Onlinedienstes
-        „AI Newsletter“ (nachfolgend „Dienst“), angeboten von [Vorname Nachname], [Straße,
-        Hausnummer], [PLZ Ort] (nachfolgend „Anbieter“), über die Website [Website-URL].
+        „AI Newsletter“ (nachfolgend „Dienst“), angeboten von Maik Löwen, Hahnenfeldstr. 12b,
+        32427 Minden (nachfolgend „Anbieter“), über die Website
+        https://ai-newsletter-sage.vercel.app.
       </p>
 
       <h2>2. Vertragsgegenstand</h2>
@@ -106,7 +107,7 @@ export default function TermsPage() {
         Es gilt das Recht der Bundesrepublik Deutschland unter Ausschluss des UN-Kaufrechts. Ist die
         Nutzerin bzw. der Nutzer Verbraucher, bleibt die zwingende Anwendbarkeit des Rechts des
         Staates, in dem sie bzw. er ihren bzw. seinen gewöhnlichen Aufenthalt hat, unberührt. Für
-        Klagen des Anbieters gegen Kaufleute ist [Ort] Gerichtsstand.
+        Klagen des Anbieters gegen Kaufleute ist Minden Gerichtsstand.
       </p>
 
       <h2>10. Streitschlichtung</h2>
