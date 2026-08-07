@@ -767,3 +767,38 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 3. Danach: Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch.
 
 
+
+## Session 19 — 07.08.2026 — LemonSqueezy-Integration live geschaltet (Test-Modus)
+
+### Ausgangslage
+- LemonSqueezy-Identitätsprüfung durch; Nutzer wollte mit Zahlung weitermachen. Store existiert (#446927, „AI Newsletter", `ai-newsletter.lemonsqueezy.com`, Land DE, Währung EUR, Produkt in **Test-Modus**).
+
+### Erkenntnis: LS-API-Key-Format 2026
+- Der generierte API-Key ist **kein** `ls_…`/`el_test_…`-String mehr, sondern ein **JWT** (RS256, `sub` = LS-User-ID). Vor Verwendung direkt gegen `GET /v1/stores` validiert (HTTP 200).
+
+### Über die API ermittelt / eingerichtet (per curl, Temp-Dateien in %TEMP%\opencode)
+- **Store-ID:** `446927` · Produkt „AI Newsletter" **`1272872`** (€5.00/Monat, published, test_mode)
+- **Variante „Monthly":** `1990193` (Subscription, monatlich, published, test_mode) → `LEMONSQUEEZY_VARIANT_ID`. (Zweite Variante „Default" `1990197`, status `pending`, wird ignoriert.)
+- **Webhook** `124833` angelegt: URL `https://ai-newsletter-sage.vercel.app/api/webhooks/lemonsqueezy`, Events `subscription_created/updated/cancelled/resumed/expired/paused`, Secret (max. 40 Zeichen!) `01cc80f1-…`.
+  - **Lehrstück:** LS lehnt `secret > 40` Zeichen ab (422) und meldet „Syntax error / Invalid JSON", wenn der Body in PowerShell direkt als `-d` übergeben wird → **Body in Datei schreiben und `-d @datei` verwenden**.
+- **Checkout-Test:** `POST /v1/checkouts` für Store 446927 + Variante 1990193 → Checkout-URL erzeugt (`test_mode: true`), `custom.user_id` und `redirect_url` korrekt übernommen.
+
+### Preisanpassung
+- Diskrepanz gefunden: Landing-Page zeigte `$9.99/month`, LS-Produkt war `€5.00/month`. **Nutzer-Entscheidung: €5.00/Monat.**
+- `src/lib/landing-copy.ts`: `pricing.paid.price` → `€5.00/month` (Commit `103e90f`).
+
+### Konfiguration (lokal)
+- `.env` (gitignored) befüllt: `LEMONSQUEEZY_API_KEY` (JWT), `LEMONSQUEEZY_WEBHOOK_SECRET`, `LEMONSQUEEZY_PRODUCT_ID=1272872`, `LEMONSQUEEZY_VARIANT_ID=1990193`, `LEMONSQUEEZY_STORE_ID=446927`, `LEMONSQUEEZY_STORE_URL=https://ai-newsletter.lemonsqueezy.com`.
+- Vercel-CLI nicht installiert → **Env-Vars muss der Nutzer im Vercel-Dashboard ergänzen** (Production + Preview): die obigen 6 Werte.
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint` ✓ · Commit `103e90f` gepusht.
+
+### Offen / Nächste Schritte
+1. **Nutzer:** Vercel-Env-Vars (6× LEMONSQUEEZY_*) in Project Settings ergänzen → dann ist `/api/checkout` live funktionsfähig.
+2. **Nutzer:** Migration `0003_subscription_ends_at.sql` im Supabase SQL Editor ausführen (falls noch nicht).
+3. End-to-End-Test: Login → Upgrade → Test-Checkout (LS Test-Card) → Webhook → `profiles.plan=paid` → Paid-Segmente im Archiv prüfen.
+4. Nach Store-Aktivierung (Identitätsprüfung) später: Live-Key statt Test-Key in `.env` + Vercel.
+5. Hinweis: LS-Produktbeschreibung ggf. um den €5-Preis bereinigen (falls die Chat-Beschreibung mit $9.99 übernommen wurde).
+
+
