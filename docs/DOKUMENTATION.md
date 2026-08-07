@@ -692,7 +692,9 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 - `tsc --noEmit` ✓ · `eslint` (confirm-Route) ✓ · `next build` ✓ (alle 15 Routen + Proxy, Build-Exit 0).
 - Commit `2df460d` gepusht → Vercel deployt automatisch.
 
-### Offen / Nächster Nutzer-Test
-- **Retest Passwort-Reset live** (nach Deploy): `/login` → „Forgot password?" → E-Mail → Link → neues Passwort setzen → Login mit neuem Passwort.
-- Danach weiter in der Launch-Todo-Liste (Zahlung live → Legal → Abo-Verwaltung → Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch).
+### Ergebnis Nutzer-Retest
+- **07.08.2026: Passwort-Reset live bestanden.** Nutzer: Reset-Link → neues Passwort setzen → Login mit neuem Passwort funktioniert („passt").
+
+### Nächste Schritte (Launch-Todo-Liste)
+- Zahlung live (LemonSqueezy-Store-Keys) → Legal (Texte/Anbieter vom Nutzer) → Abo-Verwaltung → Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch.
 
