@@ -736,3 +736,34 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 - Nächster Schritt laut Launch-Todo-Liste: Zahlung live (LemonSqueezy-Keys) oder Abo-Verwaltung im Dashboard.
 
 
+
+## Session 18 — 07.08.2026 — Abo-Verwaltung im Dashboard (LemonSqueezy Customer Portal)
+
+### Ausgangslage
+- Nutzer wählte „Abo-Verwaltung im Dashboard". LemonSqueezy-Identitätsprüfung läuft noch → Zahlung live aufgeschoben.
+- **Recherche:** LS Customer Portal = `https://[store].lemonsqueezy.com/billing`; **signed Portal-URL** liefert die LS-API pro Subscription/Kunde (`attributes.urls.customer_portal`, 24 h gültig, auto-login) → bevorzugter Weg für „Manage"-Links.
+
+### Neue Dateien / Änderungen
+| Datei | Änderung |
+|---|---|
+| `src/lib/lemonsqueezy.ts` | + `getCustomerPortalUrl(subscriptionId)` (GET `/v1/subscriptions/{id}` → signed Portal-URL, null ohne Key/Fehler, `cache: no-store`) und + `storeBillingUrl()` (Fallback `LEMONSQUEEZY_STORE_URL`/billing) |
+| `src/app/api/portal/route.ts` | Neu: GET, Auth-Pflicht; prüft per RLS, dass die Subscription dem User gehört (`profile_id` + `lemonsqueezy_subscription_id`); Redirect auf signed URL → sonst Fallback-Store-Portal → sonst 501 |
+| `src/app/dashboard/page.tsx` | Überarbeitete Abo-Sektion: **alle** Subscriptions (aktiv + Historie) mit Status-Badges (Active/Trial/Cancelled/Expired/Paused), Verlängerungs-/Enddatum, „Manage"-Link (aktiv) bzw. „View billing" (inaktiv) → `/api/portal`; Hinweis „no subscription yet" + Upgrade-CTA; Unsubscribe-Banner |
+| `src/components/preferences-form.tsx` | Format-Select + Option „Unsubscribed (no emails)" → manuelles Ab-/Wieder-Anmelden ohne E-Mail-Link |
+| `src/app/api/webhooks/lemonsqueezy/route.ts` | + `ends_at` in Attributen; speichert `ends_at` bei Upsert und im Cancel/Expired/Paused-Zweig |
+| `supabase/migrations/0003_subscription_ends_at.sql` | Neu: `subscriptions.ends_at text` (muss im SQL Editor ausgeführt werden) |
+| `.env.example` | + `LEMONSQUEEZY_STORE_URL` (Fallback-Portal-URL ohne API-Key) |
+
+### Sicherheits-Entscheidung
+- `/api/portal` öffnet **nur** das Portal einer Subscription, die der angemeldete User besitzt (RLS-Check auf `profile_id`). Kein Zugriff auf fremde Abos.
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint` ✓ · `next build` ✓ (neue Route `/api/portal` als ƒ, 21 Seiten).
+- Commit `c9523cb` gepusht → Vercel deployt automatisch.
+
+### Nutzer-Schritte
+1. Migration `0003_subscription_ends_at.sql` im Supabase SQL Editor ausführen.
+2. Nach LemonSqueezy-Aktivierung: `LEMONSQUEEZY_API_KEY`/`STORE_ID`/`VARIANT_ID`/`WEBHOOK_SECRET` (+ optional `LEMONSQUEEZY_STORE_URL=https://ai-newsletter.lemonsqueezy.com`) in `.env` + Vercel → dann sind Checkout und Portal-Links voll aktiv.
+3. Danach: Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch.
+
+
