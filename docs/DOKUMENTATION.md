@@ -698,3 +698,41 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 ### Nächste Schritte (Launch-Todo-Liste)
 - Zahlung live (LemonSqueezy-Store-Keys) → Legal (Texte/Anbieter vom Nutzer) → Abo-Verwaltung → Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch.
 
+
+
+## Session 17 — 07.08.2026 — Legal-Seiten (Impressum, Datenschutz, AGB, Disclaimer)
+
+### Ausgangslage
+- Nutzer wählte aus der Launch-Todo-Liste den Punkt **Legal**.
+- Entscheidung im Chat: Legal-Seiten-Code zuerst bauen (Platzhalter), Anbieterdaten vom Nutzer danach nachtragen.
+
+### Neue Dateien / Änderungen
+| Datei | Änderung |
+|---|---|
+| `src/components/legal-layout.tsx` | Neu: Wiederverwendbares Seiten-Skelett (Titel, „Stand", Breadcrumb-Link) + Typografie-Styles für `h2`/`h3`/`p`/`ul`/`ol`/`a` per Tailwind-Arbitrary-Varianten (kein Markdown-Paket nötig) |
+| `src/app/legal/imprint/page.tsx` | Neu: Impressum (Angaben gem. § 5 DDG, Kontakt, Verantwortlicher nach § 18 Abs. 2 MStV, EU-Streitschlichtung, Haftung für Inhalte/Links, Urheberrecht) |
+| `src/app/legal/privacy/page.tsx` | Neu: Datenschutzerklärung (DSGVO): Verantwortlicher, Verarbeitungen, Resend (Versand + Zählpixel-Tracking), LemonSqueezy (Zahlung, Merchant of Record), Vercel/Supabase (Hosting), Speicherdauer, Betroffenenrechte Art. 15–21, SSL/TLS |
+| `src/app/legal/terms/page.tsx` | Neu: AGB (Geltungsbereich, Vertragsgegenstand, Zustandekommen, Preise/Zahlung, Laufzeit/Kündigung, Widerrufsrecht inkl. § 356 BGB für digitale Inhalte, Haftung, Änderungen, Rechtswahl/Gerichtsstand, Streitschlichtung) |
+| `src/app/legal/disclaimer/page.tsx` | Neu: Disclaimer (KI-generierte Inhalte ohne Gewähr, externe Links, Empfehlungen, Haftungsausschluss) |
+| `src/components/footer.tsx` | + zweite Zeile mit Links zu allen vier Legal-Seiten (Impressum/Datenschutz/AGB/Disclaimer) |
+
+### Entscheidungen
+- **Sprache:** Legal-Seiten auf **Deutsch** (Impressums-/DSGVO-Pflicht für in Deutschland ansässigen Betreiber), Website-Sprache bleibt Englisch (E-010).
+- **Platzhalter-Ansatz:** Anbieterdaten als markierte `[PLATZHALTER]`; nach Rückmeldung des Nutzers ersetzt.
+- **Keine neue Dependencies** (react-markdown o. ä.) — Typografie via Tailwind-Arbitrary-Varianten im Wrapper.
+
+### Daten des Anbieters (vom Nutzer geliefert, Commit `5484b2e`)
+- Maik Löwen · Hahnenfeldstr. 12b · 32427 Minden · maikdrum1@gmail.com
+- Website-URL in AGB: `https://ai-newsletter-sage.vercel.app` (Nutzer-Frage „Website Url?" → aktuell Vercel-Domain; bei eigener Domain später austauschen)
+- Telefon: keine Angabe → Zeile im Impressum entfernt. Gerichtsstand AGB: Minden.
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint` ✓ · `next build` ✓ (4 neue ƒ-Routen `/legal/{imprint,privacy,terms,disclaimer}`).
+- Commits: `ea31806` (Seiten + Footer), `5484b2e` (Anbieterdaten).
+
+### Offen / Hinweise
+- **Hinweis an Nutzer:** Texte sind seriöse Standard-Templates, aber kein Rechtsrat — bei Bedarf (v. a. vor echtem Verkauf/Paid) juristisch prüfen lassen.
+- Optional: Eigene Domain später → Website-URL + Absender/Impressum anpassen.
+- Nächster Schritt laut Launch-Todo-Liste: Zahlung live (LemonSqueezy-Keys) oder Abo-Verwaltung im Dashboard.
+
+
