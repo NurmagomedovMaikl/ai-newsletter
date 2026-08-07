@@ -47,7 +47,33 @@ function collectUrls(draft: NewsletterDraft): LinkedItem[] {
   return items;
 }
 
+/** Sektionen, deren Links den Seitentitel gegen die Empfehlung prüfen (LLM-URLs sind fehleranfällig). */
+const REC_SECTIONS = new Set(["tool", "podcast", "video", "read"]);
+
+function pageTitle(html: string): string {
+  const og =
+    html.match(/<meta[^>]+property=["']og:title["'][^>]+content=["']([^"']+)["']/i) ??
+    html.match(/<meta[^>]+content=["']([^"']+)["'][^>]+property=["']og:title["']/i);
+  const raw = og?.[1] ?? html.match(/<title[^>]*>([^<]+)<\/title>/i)?.[1] ?? "";
+  return raw.replace(/&amp;/g, "&").replace(/&quot;/g, '"').replace(/&#39;/g, "'").trim();
+}
+
+/** Wort-Überlappung zweier Titel (Normalisierung, Stopwörter-ähnlich kurzgewichtig). */
+function titleOverlap(a: string, b: string): number {
+  const tokens = (s: string) =>
+    s
+      .toLowerCase()
+      .replace(/[^a-z0-9\s]/g, " ")
+      .split(/\s+/)
+      .filter((w) => w.length > 2);
+  const ta = tokens(a);
+  const tb = tokens(b);
+  if (ta.length === 0) return 1;
+  return ta.filter((w) => tb.includes(w)).length / ta.length;
+}
+
 async function validateLink(item: LinkedItem): Promise<QaIssue | null> {
+  const needsTitleCheck = REC_SECTIONS.has(item.section);
   const probe = async (method: "HEAD" | "GET"): Promise<Response> => {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), LINK_TIMEOUT_MS);
@@ -64,16 +90,50 @@ async function validateLink(item: LinkedItem): Promise<QaIssue | null> {
   };
 
   try {
-    let res = await probe("HEAD");
+    let res = needsTitleCheck ? await probe("GET") : await probe("HEAD");
     if (res.status === 405 || res.status === 403 || res.status === 501) res = await probe("GET");
     if (res.status >= 400) {
       const severity: QaIssue["severity"] =
         res.status === 404 || res.status === 410 ? "error" : "warning";
       return { severity, section: item.section, message: `HTTP ${res.status}`, url: item.url };
     }
+    if (!needsTitleCheck) return null;
+
+    // Inhaltscheck für Empfehlungen: tote/Wrong-Content-Seiten liefern oft HTTP 200.
+    const html = await res.text();
+    const title = pageTitle(html);
+    const normalized = title.replace(/\s*[-|–]\s*(YouTube|Youtube)$/i, "").trim();
+    const hay = normalized.toLowerCase();
+    if (normalized.length === 0) {
+      return {
+        severity: "error",
+        section: item.section,
+        message: "Seite liefert keinen Titel (Video/Artikel nicht verfügbar?)",
+        url: item.url,
+      };
+    }
+    if (/(video unavailable|not available|404|not found|page not found|doesn'?t exist|no longer available)/.test(hay)) {
+      return {
+        severity: "error",
+        section: item.section,
+        message: `Seitentitel deutet auf toten Inhalt hin: "${title}"`,
+        url: item.url,
+      };
+    }
+    if (normalized.length >= 6 && titleOverlap(item.label, normalized) < 0.3) {
+      return {
+        severity: "error",
+        section: item.section,
+        message: `Seitentitel passt nicht zur Empfehlung: "${title}"`,
+        url: item.url,
+      };
+    }
     return null;
   } catch {
-    return { severity: "warning", section: item.section, message: "Nicht prüfbar (Timeout/Netz)", url: item.url };
+    // Empfehlungs-Links (LLM-generiert) fail-closed: Netzfehler = error, damit kein ungeprüfter Link versendet wird.
+    return needsTitleCheck
+      ? { severity: "error", section: item.section, message: "Nicht prüfbar (Timeout/Netz) — Empfehlungs-Link", url: item.url }
+      : { severity: "warning", section: item.section, message: "Nicht prüfbar (Timeout/Netz)", url: item.url };
   }
 }
 
@@ -123,12 +183,42 @@ Empty issues array = all good. "error" = must-fix before sending, "warning" = sh
  *  die ein LLM-QA erfahrungsgemäß unzuverlässig bewertet. */
 function deterministicChecks(draft: NewsletterDraft): QaIssue[] {
   const issues: QaIssue[] = [];
-  const example = draft.imagePromptTraining?.examplePrompt ?? "";
+  const training = draft.imagePromptTraining;
+  const example = training?.examplePrompt ?? "";
   if (!example.trim() || /\[[^\]]*\]/.test(example)) {
     issues.push({
       severity: "error",
       section: "imagePromptTraining",
       message: "examplePrompt muss ein konkretes, vollständiges Beispiel ohne [PLATZHALTER] sein.",
+    });
+  }
+  if (!training?.concept?.trim() || training.concept.trim().length < 60) {
+    issues.push({
+      severity: "error",
+      section: "imagePromptTraining",
+      message: "concept fehlt oder zu dünn (<60 Zeichen) — die Technik-Lektion muss konkret erklärt werden.",
+    });
+  }
+  if (!training?.promptTemplate?.trim() || training.promptTemplate.trim().length < 40) {
+    issues.push({
+      severity: "error",
+      section: "imagePromptTraining",
+      message: "promptTemplate fehlt oder zu kurz.",
+    });
+  }
+  const promptWeek = draft.promptOfTheWeek;
+  if (!promptWeek?.prompt?.trim() || promptWeek.prompt.trim().length < 60) {
+    issues.push({
+      severity: "error",
+      section: "prompt",
+      message: "prompt fehlt oder zu kurz (<60 Zeichen) — ein kompletter, einsatzbereiter Prompt ist nötig.",
+    });
+  }
+  if (!promptWeek?.explanation?.trim() || promptWeek.explanation.trim().length < 60) {
+    issues.push({
+      severity: "error",
+      section: "prompt",
+      message: "explanation fehlt oder zu dünn (<60 Zeichen) — WANN/WARUM/WIE konkret erklären.",
     });
   }
   return issues;

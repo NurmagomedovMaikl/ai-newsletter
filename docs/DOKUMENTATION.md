@@ -827,3 +827,86 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 3. Alternativ signierten Test-Webhook direkt an die Live-URL senden (Payload nachbauen, mit `LEMONSQUEEZY_WEBHOOK_SECRET` signieren) → DB prüfen.
 
 
+
+## Session 21 — 07.08.2026 — Inhaltliches QA-Härtung + Zahlungs-E2E + Live-Versand
+
+### Ausgangslage
+- Launch-Todo: QA/Links, Zahlung, Review. Frühere Testläufe zeigten: Der LLM empfiehlt wiederholt **nicht existente / off-topic** Empfehlungen (z. B. YouTube-Video mit halluzinierter Video-ID, Podcast-Domain im „Domain-Parking"). HTTP-Codes allein reichten nicht (solche Seiten liefern HTTP 200).
+
+### 1. QA: Inhalts-Link-Check (deterministisch) — `pipeline/qa.ts`
+- Empfehlungs-Links (tool/podcast/video/read) werden jetzt per **GET** geprüft und der **Seitentitel** aus dem HTML extrahiert (`pageTitle`, `<title>`/`og:title`-Fallback).
+- Neuer Fehler-Wortlaut & Regeln (nur für `REC_SECTIONS`; News-Links weiterhin nur HTTP-Check):
+  - Titel leer / nur „- YouTube" (tote Video-Seite) → **error** „Seite liefert keinen brauchbaren Titel".
+  - Titel mit `video unavailable`/`not found`/`404`/`no longer available` → **error** „Seitentitel deutet auf toten Inhalt hin".
+  - **Titel-Overlap** mit der Empfehlung < 30 % (`titleOverlap`: Wort-Overlap) → **error** „Seitentitel passt nicht zur Empfehlung" (fängt Domain-Parking „…is for sale | HugeDomains" ab).
+  - Fetch-Fehler (Timeout/Netz) bei Empfehlungen → **error (fail-closed)**, bei News → warning.
+- Hinzugefügt: `REC_SECTIONS`, `pageTitle()`, `titleOverlap()`; `validateLink` gibt `needsTitleCheck` nur für Empfehlungen `true`.
+- Typecheck ok. **Testlauf belegt:** Podcast `alignmentpodcast.com` („is for sale") und YouTube `watch?v=u5p2z9xL2hU` (kein Titel) wurden zuverlässig als ERROR erkannt (vorher blieben sie unentdeckt).
+
+### 2. Generierung: Video-Empfehlung härter angeleitet — `pipeline/generate_content.ts`
+- Video-Segment-Prompt: nur noch sicher existierende Inhalte; „be VERY careful with specific video IDs"; **Prefer channel/playlist/series pages over specific video IDs**; bei Unsicherheit `null` zurückgeben (kein erfundenes Video).
+
+### 3. Auto-Fix live getestet (vollständiger Zyklus)
+- `npm run pipeline:weekly -- --from=assets --auto-fix` auf Draft 08-07:
+  - QA 1 → **FAIL (2 Fehler**: Podcast + Video, s. o.).
+  - Auto-Fix entfernte `podcastOfTheWeek` und `videoOfTheWeek`, schrieb Draft + E-Mail neu.
+  - QA 2 → **PASS (0 Fehler, 8 Warnungen)** → Persist als **Status `qa`** (254 Artikel, 7 Segmente, beide Bilder im Storage).
+
+### 4. Live-Inhalt 08-07 (frischer Pipeline-Lauf ~14:37 durch den Nutzer)
+- Ein weiterer `pipeline:weekly`-Lauf (ohne meine Beteiligung, vermutlich manuell vom Nutzer) hatte um **14:37–14:38** einen **neuen Draft generiert und als `qa` persistiert** (Tool=Keystroke, Prompt „AI-Powered Meeting Notes", Image-Training „Crafting Vivid Scenes", Read=Deep Learning Book; QA passed). Diese Daten waren danach die Grundlage für Veröffentlichung + Versand.
+- **Qualitäts-Fix bestätigt:** Prompt (vollständiger Prompt mit Platzhaltern + 3-Satz-Erklärung) und Image-Prompt-Training (4-Satz-Konzept + Template + detailliertes Beispiel) sind jetzt gehaltvoll statt dünn/leer.
+
+### 5. Altbestand bereinigt
+- Aus dem veröffentlichten Issue **2026-08-05** das Segment `video` gelöscht (enthielt denselben halluzinierten YouTube-Link) → 7 Segmente, kein toter Link mehr im Archiv.
+
+### 6. Zahlungs-E2E (LemonSqueezy-Webhook, signierte Payloads direkt an die Live-URL)
+- **Downgrade:** `subscription_cancelled` (Sub 2414143, Test-Modus) → `subscriptions.status=cancelled` + `ends_at` gesetzt + `profiles.plan=free` ✓
+- **Reaktivierung:** `subscription_updated` (status active) → `status=active`, `current_period_end` gesetzt, `ends_at` leer + `profiles.plan=paid` ✓
+- **Paywall/RLS:** `issue_content` mit **Anon-Key** abgefragt → nur `intro`/`news`/`tool` sichtbar, Paid-Segmente (`prompt`/`image_training`/`deep_dive`/`read`) werden per RLS verborgen ✓
+
+### 7. Live-Veröffentlichung + E-Mail-Versand
+- Issue **2026-08-07** veröffentlicht (`status=published`, `published_at` gesetzt).
+- Testprofil `test2@example.com` auf `email_preferences.format=unsubscribed` gestellt (verhindert Bounce an Fake-Adresse beim Versand).
+- `POST /api/send-weekly` (Bearer `CRON_SECRET`) → `recipients: 1`, **`sent: 1`** (maikdrum1@gmail.com, Paid → voller Inhalt inkl. Premium-Segmente), `newsletter_deliveries.status=sent` ✓.
+- Öffentliche Issue-Seite `https://ai-newsletter-sage.vercel.app/issues/2026-08-07` → HTTP 200, Free-Segmente sichtbar, Paid-Segmente durch RLS verborgen ✓.
+
+### Offen / Hinweise
+- **Absender ist noch `onboarding@resend.dev`** (Resend-Test-Domain): sendet nur an die eigene Adresse und wird von Clients ggf. als Spam markiert. Für echte Abonnenten eigene Domain in Resend verifizieren (SPF/DKIM) und `NEWSLETTER_FROM_EMAIL` + Vercel-Env umstellen.
+- **`NEXT_PUBLIC_SITE_URL` lokal = `http://localhost:3000`** — auf Vercel ist die Produktions-URL gesetzt (dort griff der Versand korrekt). Nur relevant, falls lokal gerendert/versendet wird.
+- Offen: Unsubscribe-Link-Endtest + Open/Click-Tracking anhand der versandten Test-Mail (Resend-Webhook `delivered/opened/clicked`); Dashboard-Statistik optional.
+- Kein Vercel-Cron für die Pipeline selbst (nur `send-weekly`); wöchentlicher Ablauf über GitHub Actions `weekly.yml` (Montag 04:45 UTC) — im Repo vorhanden, bisher ungetestet.
+
+---
+
+## Session 22 — 07.08.2026 — Finalisierung: Build, Live-Smoke-Tests, QA-Finallauf, Doku & letzte Commits
+
+### Ausgangslage
+- Nutzer erklärte das Projekt als fertig und wünschte Finalisierung: letzte eigene Testrunde, Doku finalisieren, letzte Commits/Push.
+
+### 1. Finale Testrunde
+- `git status`: nur `docs/DOKUMENTATION.md`, `pipeline/generate_content.ts`, `pipeline/qa.ts` modified (HEAD `1a18f3c`).
+- **`npm run build` → PASS:** Compiled in 39,3 s, TypeScript ok, **21 Routen + Proxy** (`, /`, `/_not-found`, `/api/checkout`, `/api/portal`, `/api/send-weekly`, `/api/unsubscribe`, `/api/webhooks/lemonsqueezy`, `/api/webhooks/resend`, `/auth/callback`, `/auth/confirm`, `/auth/reset-password`, `/dashboard`, `/issues`, `/issues/[date]`, `/legal/disclaimer`, `/legal/imprint`, `/legal/privacy`, `/legal/terms`, `/login`, `/register`).
+- **Live-Smoke-Tests** gegen `https://ai-newsletter-sage.vercel.app` (Node-Skript, Ergebnisse in Temp-Datei, danach aufgeräumt) — alle erwartungskonform:
+  - Öffentliche Seiten (Landing, Issue-08-05/08-07, Legal) → **200**.
+  - `/dashboard` ohne Session → **307** (Redirect zu `/login`).
+  - `/api/send-weekly` ohne Bearer → **401** `{"error":"Unauthorized"}`.
+  - `/api/checkout` → **307** (redirect auf LS-Checkout-Pfad), `/api/portal` ohne Session → **307**.
+  - LS-Webhook ohne Signatur → **401** `Ungültige Signatur`; Resend-Webhook ohne Signatur → **401** `Signatur-Header fehlen.`; `/api/unsubscribe` ohne Token → **400** `Token fehlt.`
+- **Paywall-Rendering live bestätigt:** `/issues/2026-08-05` anonym zeigt Gate-Text `premium subscribers` + `Upgrade to Premium`; `/issues/2026-08-07` anonym enthält den Paid-Teil `Read of the week` **nicht**, den Free-Teil `Tool of the week` **doch**.
+- **DB-Endzustand:** Issue 2026-08-07 (`be46b84f-…`) und 2026-08-05 (`5b45c7bb-…`) beide `published`; Subscription 2414143 `active` ohne `ends_at` (Zustand nach Reaktivierung wiederhergestellt); `newsletter_deliveries`: 1× `failed` (bekannter Bounce test2), 2× `sent` (08-06/08-07), Open/Click leer (Test-Mail noch nicht geöffnet).
+
+### 2. Finaler QA-Lauf
+- `npm run pipeline:qa` gegen den aktuellen Draft 08-07 → **PASS (0 Fehler, 8 Warnungen)**; Link-Validierung 7/7 ok; Claims ohne Widersprüche. Warnungen ausschließlich bekannte/harmlose (Satzlängen, Google-Fact-Check-Key optional nicht gesetzt, Google-News-Redirect-URLs im Claims-Check nicht verifizierbar).
+
+### 3. Doku & Plan finalisiert
+- `docs/PROJEKT_PLAN.md`: Checkboxen auf Ist-Stand gebracht; Abschnitt **„FINALER STAND (Session 22)"** ergänzt mit den verbleibenden **Nutzer-Schritten** bis zum echten Launch (eigene Resend-Domain/SPF-DKIM, LS Live-Modus, optionale GitHub-Secrets, optionales Monitoring).
+- `docs/DOKUMENTATION.md`: dieser Eintrag (Session 22).
+
+### 4. Commit & Push
+- Commit der finalen Änderungen (`pipeline/qa.ts`, `pipeline/generate_content.ts`, `docs/DOKUMENTATION.md`, `docs/PROJEKT_PLAN.md`) → Push auf `origin/main` → Vercel-Deploy.
+
+### Offen / Hinweise (nur noch Nutzer-Schritte vor echtem Launch)
+1. **Eigene Domain in Resend verifizieren** (SPF/DKIM) und `NEWSLETTER_FROM_EMAIL` + `NEWSLETTER_FROM_NAME` in Vercel-Env umstellen (aktuell `onboarding@resend.dev`, sendet nur an die eigene Adresse).
+2. **LemonSqueezy auf Live-Modus umstellen** (Identitätsprüfung; Live-API-Key in `.env` + Vercel-Env).
+3. Optional: GitHub-Secrets (`NEWSAPI_KEY`, `GOOGLE_FACTCHECK_API_KEY`, `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, `ADMIN_EMAIL`) für den wöchentlichen GitHub-Actions-Workflow; Verifikation des `weekly.yml`-Laufs.
+4. Optional: Dashboard-Statistik + Monitoring ausbauen; Open/Click-Tracking anhand einer geöffneten Test-Mail.

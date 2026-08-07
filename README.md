@@ -72,6 +72,5 @@ docs/                # DOKUMENTATION.md, PROJEKT_PLAN.md
 
 ## Status
 
-- ✅ Phasen 0–4 (Setup, Recherche, Scoring, Inhalte, Assets, QA inkl. Fake-News-Check)
-- ✅ Phase 8-Kern (Master-Skript `run_weekly.ts`, Auto-Fix, fail-closed)
-- ⬜ Phase 5 Supabase, 6 Frontend, 7 Email-Versand, 8-Rest (Cron/Notification), 9 Qualitätstests, 10 Launch
+- ✅ **Fertig (Stand 07.08.2026, Session 22):** Phasen 0–10 — Setup, Recherche, Scoring, Inhalte, Assets, QA inkl. Fake-News-Check (Stufe 1 LLM + Auto-Fix), Supabase (Auth, DB, RLS-Paywall, Storage), Frontend (Landing, Auth, Dashboard, Legal), E-Mail-Versand (Resend, Unsubscribe, Bounce/Open/Click), Zahlung (LemonSqueezy Test-Modus, Webhook-E2E), Deployment (Vercel live unter `https://ai-newsletter-sage.vercel.app`), Doku.
+- ⬜ **Nur noch Nutzer-Schritte bis zum echten Launch:** eigene Domain in Resend (SPF/DKIM) + `NEWSLETTER_FROM_EMAIL` umstellen, LemonSqueezy auf Live-Modus umstellen, optionale GitHub-Secrets für `weekly.yml`, optionales Monitoring/Dashboard-Statistik. Details: `docs/PROJEKT_PLAN.md` → „FINALER STAND".

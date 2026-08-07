@@ -19,36 +19,66 @@ interface Segment<T> {
   llmUsed: string[];
 }
 
+interface SegmentOptions<T> {
+  maxTokens?: number;
+  /** Validiert den geparsten Wert; liefert eine Fehlermeldung oder null (ok). */
+  validate?: (value: T) => string | null;
+}
+
+const SEGMENT_MAX_ATTEMPTS = 3;
+
 async function segment<T>(
   name: string,
   system: string,
   user: string,
-  maxTokens = 2500,
+  options: SegmentOptions<T> = {},
 ): Promise<Segment<T>> {
+  const { maxTokens = 2500, validate } = options;
   const messages: LlmMessage[] = [
     { role: "system", content: system },
     { role: "user", content: user },
   ];
-  let res: LlmResult;
-  let value: T;
-  for (let attempt = 1; ; attempt++) {
-    res = await generateChat(messages, { maxTokens, temperature: 0.6 });
+  for (let attempt = 1; attempt <= SEGMENT_MAX_ATTEMPTS; attempt++) {
+    const res = await generateChat(messages, { maxTokens, temperature: 0.6 });
+    let value: T | undefined;
+    let problem: string | null = null;
     try {
       value = extractJson<T>(res.content);
-      break;
     } catch (err) {
-      if (attempt >= 2) throw err;
-      console.warn(`[SEGMENT] ${name}: JSON-Parse-Fehler (${(err as Error).message}) — Retry`);
+      problem = `JSON-Parse-Fehler: ${(err as Error).message}`;
     }
+    if (problem === null && validate) {
+      problem = validate(value as T);
+    }
+    if (problem === null) {
+      console.log(`[SEGMENT] ${name} ok (${res.provider}/${res.model})`);
+      return { value: value as T, llmUsed: [`${res.provider}:${res.model}`] };
+    }
+    if (attempt >= SEGMENT_MAX_ATTEMPTS) {
+      throw new Error(`Segment "${name}": ${problem}`);
+    }
+    console.warn(`[SEGMENT] ${name}: ${problem} — Retry ${attempt + 1}/${SEGMENT_MAX_ATTEMPTS}`);
+    messages.push({
+      role: "user",
+      content: `Deine letzte Antwort war unzureichend: ${problem}. Beantworte erneut, erfülle ALLE Anforderungen und antworte NUR mit gültigem JSON.`,
+    });
   }
-  console.log(`[SEGMENT] ${name} ok (${res.provider}/${res.model})`);
-  return { value, llmUsed: [`${res.provider}:${res.model}`] };
+  throw new Error(`Segment "${name}": keine gültige Antwort nach ${SEGMENT_MAX_ATTEMPTS} Versuchen.`);
 }
 
 function loadScored(): ScoredArticle[] {
   const file = join(OUTPUT_DIR, "scored_articles.json");
   if (!existsSync(file)) throw new Error("scored_articles.json fehlt. Erst npm run pipeline:score ausführen.");
   return JSON.parse(readFileSync(file, "utf8")) as ScoredArticle[];
+}
+
+/** Empfehlungen dürfen null sein, müssen aber als Objekt vollständig sein. */
+function recValidator(v: Recommendation | null): string | null {
+  if (v === null) return null;
+  if (!v?.title?.trim() || !v?.url?.startsWith("http") || !v?.description?.trim() || !v?.why?.trim()) {
+    return "Empfehlung braucht title, url (http), description und why.";
+  }
+  return null;
 }
 
 export async function generate(): Promise<void> {
@@ -82,6 +112,15 @@ For each: keep the EXACT title, url and source from the input (never invent URLs
 and write a punchy 1-2 sentence summary.
 Respond with a VALID JSON array only: [{"title","url","source","summary"}]`,
     JSON.stringify(newsCtx),
+    {
+      validate: (v) => {
+        if (!Array.isArray(v) || v.length < 3 || v.length > 6) return "3-5 News-Snippets erforderlich.";
+        for (const s of v) {
+          if (!s?.title?.trim() || !s?.url || !s?.summary?.trim()) return "Jeder Snippet braucht title, url und summary.";
+        }
+        return null;
+      },
+    },
   );
   llmUsed.push(...news.llmUsed);
 
@@ -100,6 +139,12 @@ Keep the EXACT url from the input. Respond with a VALID JSON object only:
 {"title","url","description","why"} where "description" explains what it does
 and "why" (max 40 words) why a reader should try it this week.`,
       JSON.stringify(toolCtx),
+      {
+        validate: (v) =>
+          v && v.title?.trim() && v.url?.startsWith("http") && v.description?.trim() && v.why?.trim()
+            ? null
+            : "Alle Felder (title, url, description, why) sind Pflicht.",
+      },
     );
     toolOfTheWeek = tool.value;
     llmUsed.push(...tool.llmUsed);
@@ -111,28 +156,58 @@ and "why" (max 40 words) why a reader should try it this week.`,
   const promptWeek = await segment<NewsletterDraft["promptOfTheWeek"]>(
     "Prompt of the Week",
     `Create the "Prompt of the Week" for an AI newsletter for developers and creatives.
-Choose a practically useful, non-obvious prompt pattern.
+Choose a genuinely useful, non-obvious prompt pattern readers can copy-paste today.
 Respond with a VALID JSON object only:
-{"title","prompt","explanation"} where "prompt" is the exact copy-paste-able prompt
-(with placeholders in [BRACKETS]) and "explanation" (max 60 words) explains
-when and how to use it.`,
+{"title","prompt","explanation"}
+- "title": short, catchy title.
+- "prompt": a COMPLETE, ready-to-use prompt (2-4 sentences, concrete) with placeholders in [BRACKETS].
+- "explanation": 2-4 sentences explaining WHEN to use it, WHY it works and HOW to adapt it
+  (specific, actionable, min ~80 characters).
+Do NOT pick a bare one-line template like "Explain the error in the code snippet [X]".`,
     `Theme: a genuinely useful prompt for a current AI assistant (Claude, ChatGPT, Gemini).
 Keep it fresh and actionable.`,
+    {
+      maxTokens: 2500,
+      validate: (v) => {
+        if (!v?.title?.trim() || v.title.trim().length < 5) return "title fehlt oder zu kurz.";
+        if (!v.prompt?.trim() || v.prompt.trim().length < 60)
+          return "prompt fehlt oder zu kurz (<60 Zeichen) — ein kompletter, einsatzbereiter Prompt ist nötig.";
+        if (!v.explanation?.trim() || v.explanation.trim().length < 80)
+          return "explanation fehlt oder zu kurz (<80 Zeichen) — WANN/WARUM/WIE konkret erklären.";
+        return null;
+      },
+    },
   );
   llmUsed.push(...promptWeek.llmUsed);
 
   // --- 4) Bildgenerierungs-Prompt-Training ---
   const imgTraining = await segment<NewsletterDraft["imagePromptTraining"]>(
     "Image Prompt Training",
-    `Write an "Image Prompt Training" section that TEACHES readers how to craft
-high-quality image generation prompts (for tools like Midjourney, DALL-E, Flux).
-The house style of the newsletter is "modern 3D illustration".
+    `Write an "Image Prompt Training" section that TEACHES one specific, practical technique
+for crafting high-quality image-generation prompts (Midjourney, DALL-E, Flux).
+The newsletter's visual house style is "modern 3D illustration".
 Respond with a VALID JSON object only:
 {"title","concept","promptTemplate","examplePrompt"}
-- "concept": the technique/principle taught this week (max 80 words)
-- "promptTemplate": a reusable template with [PLACEHOLDERS]
-- "examplePrompt": one complete, detailed example prompt in 3D-illustration style`,
+- "title": short, catchy lesson title.
+- "concept": THE LESSON — explain the technique/principle in 3-5 sentences with concrete advice
+  (min ~80 characters). Do NOT just restate the template.
+- "promptTemplate": a reusable structured template with [PLACEHOLDERS].
+- "examplePrompt": one complete, richly detailed example prompt in 3D-illustration style
+  (min ~100 characters).`,
     "Keep it practical and beginner-friendly.",
+    {
+      maxTokens: 2500,
+      validate: (v) => {
+        if (!v?.title?.trim() || v.title.trim().length < 5) return "title fehlt oder zu kurz.";
+        if (!v.concept?.trim() || v.concept.trim().length < 80)
+          return "concept fehlt oder zu kurz (<80 Zeichen) — die eigentliche Technik-Lektion fehlt.";
+        if (!v.promptTemplate?.trim() || v.promptTemplate.trim().length < 40)
+          return "promptTemplate fehlt oder zu kurz.";
+        if (!v.examplePrompt?.trim() || v.examplePrompt.trim().length < 100)
+          return "examplePrompt fehlt oder zu kurz (<100 Zeichen) — vollständiges Beispiel nötig.";
+        return null;
+      },
+    },
   );
   llmUsed.push(...imgTraining.llmUsed);
 
@@ -148,7 +223,16 @@ Respond with a VALID JSON object only:
 - "steps": 5-8 concrete, numbered steps a reader can follow
 - "takeaways": 3-5 bullet-style takeaways`,
     `Recent trending topics: ${topicHint || "none"}`,
-    4000,
+    {
+      maxTokens: 4000,
+      validate: (v) => {
+        if (!v?.topic?.trim() || v.topic.trim().length < 5) return "topic fehlt oder zu kurz.";
+        if (!v.intro?.trim() || v.intro.trim().length < 100) return "intro fehlt oder zu kurz (<100 Zeichen).";
+        if (!Array.isArray(v.steps) || v.steps.length < 4) return "steps: 5-8 konkrete Schritte nötig.";
+        if (!Array.isArray(v.takeaways) || v.takeaways.length < 2) return "takeaways: 3-5 nötig.";
+        return null;
+      },
+    },
   );
   llmUsed.push(...deepDive.llmUsed);
   // Repair-Artefakte entfernen: Listenmarker ("1." / "*") landen manchmal als Zahlen/Einträge im Array
@@ -166,6 +250,7 @@ content you are confident actually exists (famous shows only).
 Respond with a VALID JSON object only: {"title","url","description","why"}.
 If you cannot think of a safe recommendation, respond with: null`,
     "Short description and why (max 40 words).",
+    { maxTokens: 2500, validate: recValidator },
   );
   llmUsed.push(...podcast.llmUsed);
 
@@ -176,6 +261,7 @@ recommend content you are confident actually exists.
 Respond with a VALID JSON object only: {"title","url","description","why"}.
 If unsure, respond with: null`,
     "Short description and why (max 40 words).",
+    { maxTokens: 2500, validate: recValidator },
   );
   llmUsed.push(...video.llmUsed);
 
@@ -186,6 +272,7 @@ recommend something you are confident exists.
 Respond with a VALID JSON object only: {"title","url","description","why"}.
 If unsure, respond with: null`,
     "Short description and why (max 40 words).",
+    { maxTokens: 2500, validate: recValidator },
   );
   llmUsed.push(...read.llmUsed);
 

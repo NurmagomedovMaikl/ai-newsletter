@@ -35,18 +35,18 @@
 
 ## PHASE 0 — Projekt-Setup
 
-- [ ] Node.js (>= 18) + npm installieren/verifizieren
-- [ ] Git-Repository initialisieren (lokal, `.gitignore` anlegen)
-- [ ] Next.js-Projekt erstellen (`create-next-app`) mit TypeScript + Tailwind
-- [ ] Projektstruktur festlegen:
+- [x] Node.js (>= 18) + npm installieren/verifizieren
+- [x] Git-Repository initialisieren (lokal, `.gitignore` anlegen)
+- [x] Next.js-Projekt erstellen (`create-next-app`) mit TypeScript + Tailwind
+- [x] Projektstruktur festlegen:
   - `src/app/` (Pages/UI)
   - `src/lib/` (Bibliotheken: Supabase, LLM, Email, LemonSqueezy)
   - `src/api/` (Interne Pipeline-Funktionen)
   - `pipeline/` (Weekly-Workflow-Skripte)
   - `docs/` (Dokumentation)
-- [ ] Environment-Variablen-Schema anlegen (`.env.example` — Keys nie committen)
-- [ ] Supabase-Projekt erstellen (kostenlos) + Anmeldedaten in Env hinterlegen
-- [ ] Vercel-Konto + Projekt mit GitHub verbinden (später für Deploy)
+- [x] Environment-Variablen-Schema anlegen (`.env.example` — Keys nie committen)
+- [x] Supabase-Projekt erstellen (kostenlos) + Anmeldedaten in Env hinterlegen
+- [x] Vercel-Konto + Projekt mit GitHub verbinden (Deploy, Session 15)
 
 ---
 
@@ -62,7 +62,7 @@
   - Kleine Pause (750ms) zwischen Quellen gegen Rate-Limits
   - Fehler einzelner Quellen brechen die Pipeline NICHT ab (werden geloggt)
 - [x] Ausgabe: JSON-Datei unter `pipeline/output/raw_articles_YYYY-MM-DD.json` + `latest.json`
-- [ ] Ausgabe zusätzlich in Supabase-Tabelle `raw_articles` speichern (kommt, wenn Supabase-Setup in Phase 5 steht)
+- [x] Ausgabe zusätzlich in Supabase-Tabelle `raw_articles` speichern (254 Artikel, Session 10)
 
 ## PHASE 2 — Content-Pipeline: Filter + Zusammenfassung
 
@@ -79,7 +79,7 @@
   - [x] Read of the Week (Empfehlung + Begründung)
 - [x] Summarize-Skript: `pipeline/generate_content.ts` — LLM erzeugt Snippets + Texte für alle Segmente
 - [x] Output-Schema `newsletter_draft` (Typen in `src/lib/types.ts`, JSON-Ausgabe)
-- [ ] Entwurf zusätzlich in Supabase `issues`-Tabelle speichern (kommt mit Supabase-Setup, Phase 5)
+- [x] Entwurf zusätzlich in Supabase `issues`-Tabelle speichern (Session 10)
 
 ## PHASE 3 — Asset-Generierung
 
@@ -89,7 +89,7 @@
   - [x] Bild-Größen/Formate festgelegt: Header 1024x576 (PNG), Social-Teaser 1024x1024 (PNG)
 - [x] E-Mail-HTML-Asset: Template gebaut (`pipeline/templates/email_template.html`, responsiv, Inline-CSS) + Renderer (`renderEmail.ts`)
 - [x] Landing-Page-Texte + Produktbeschreibungen generiert (`landing_texts.json`)
-- [ ] Generierte Assets in Supabase Storage ablegen (kommt mit Supabase-Setup, Phase 5)
+- [x] Generierte Assets in Supabase Storage ablegen (Bucket `newsletter-assets`, Session 10)
 - [x] Bilder für Ausgabe 1 generiert (Cloudflare Workers AI, Testlauf 05.08.2026 erfolgreich)
 
 ## PHASE 4 — Qualitätssicherung + Fake-News-Test
@@ -100,7 +100,8 @@
 - [x] Kreuz-Referenz: widersprüchliche Aussagen zwischen mehreren Quellen erkennen (`crossReferenceCheck` in `qa.ts`)
 - [x] Bild-ALT-Texte + Accessibility-Check im HTML-Template (Header-ALT-Texte eingebaut)
 - [x] Fehlertoleranz: Pipeline bricht bei QA-Fail ab und loggt (Exit-Code 1, Report `qa_report_*.json`)
-- [ ] Optional: manueller Review-Schritt (E-Mail an Admin mit Draft zur Freigabe)
+- [x] Link-Inhalts-Check für Empfehlungen (Seitentitel-Validierung, tote/halluzinierte Links, Domain-Parking) + Auto-Fix (Session 21)
+- [x] Optional: manueller Review-Schritt — **ersetzt durch** Auto-Fix + QA-Report + Admin-Notification (`notifyAdminOnErrorIfConfigured`)
 
 ## PHASE 5 — Datenbank + User Management
 
@@ -113,7 +114,7 @@
   - [x] `newsletter_deliveries` (Versandlog je User)
 - [x] Row-Level-Security aktivieren (User sieht nur eigene Daten; Free/Paid-Gating via `is_paid_subscriber()`)
 - [x] API-Hilfsfunktionen: `lib/supabase/client.ts`, `lib/supabase/server.ts` (Service-Role), `lib/auth.ts` (Session/Profil/Paid-Check), `src/proxy.ts` (Session-Refresh, Next-16-Proxy)
-- [ ] Auth-Flows: Registrierung, Login, E-Mail-Verifikation, Passwort-Reset (UI folgt in Phase 6, Resend in Phase 7)
+- [x] Auth-Flows: Registrierung, Login, E-Mail-Verifikation, Passwort-Reset (UI in Phase 6, PKCE-Code-Bugfix Session 16)
 - [x] Migration in echtes Supabase-Projekt anwenden + Keys in `.env` hinterlegen (Nutzer-Schritt)
 - [x] Pipeline-Persistenz: `pipeline/persist.ts` (raw_articles + issues + issue_content in DB, Header/Social-PNG in Storage-Bucket `newsletter-assets`, Stufe 6/6 in `run_weekly.ts`, `--publish` für Freigabe)
 
@@ -125,35 +126,36 @@
 - [x] Account-Dashboard:
   - [x] Plan-Anzeige (Free / Paid)
   - [x] Newsletter-Einstellungen (Frequenz, Themen, Formate)
-  - [ ] Abo-Verwaltung (Upgrade/Downgrade/Kündigen) — Upgrade-Link da, Kündigen/Verwaltung erst mit echten LS-Keys
-  - [x] Zugriff auf bisherige Ausgaben (Paid: komplette Archive)
+  - [x] Abo-Verwaltung (Upgrade/Downgrade/Kündigen) — LS Customer Portal (Session 18) + Webhook-E2E (Cancel/Downgrade/Reaktivierung, Session 21)
+- [x] Zugriff auf bisherige Ausgaben (Paid: komplette Archive)
 - [x] Paid-Version:
   - [x] Newsletter-Archiv (alle früheren Ausgaben)
   - [x] Exklusive Segmente (z.B. erweiterte Prompt-Sammlung, Deep-Dive-Tutorials vollständig)
 - [x] Free-Version:
   - [x] Aktuelle Ausgabe (eingeschränkt, z.B. nur News-Snippets + Tool of the Week)
 - [x] Zahlungsflow:
-  - [x] LemonSqueezy-Checkout integrieren (Monats-Abo) — env-gestützt, Live-Test mit Keys offen
-  - [x] Webhook-Handler für Zahlungsstatus (LemonSqueezy → Supabase `subscriptions`) — env-gestützt, Live-Test mit Keys offen
-  - [ ] Gratis-Testzeitraum optional
+  - [x] LemonSqueezy-Checkout integrieren (Monats-Abo) — live im Test-Modus (Checkout-URL erzeugt, Session 19)
+  - [x] Webhook-Handler für Zahlungsstatus (LemonSqueezy → Supabase `subscriptions`) — Live-E2E getestet (Session 20/21)
+  - [ ] Gratis-Testzeitraum optional — nicht umgesetzt (optional)
 - [x] Responsive Design + Dark Mode (optional)
 - [x] SEO: Meta-Tags, OG-Images
 
 ## PHASE 7 — Email Service
 
 - [x] Resend-Konto + API-Key (live, Test-Konto; Key in `.env` + Vercel + GitHub-Secrets)
-- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation) — Test mit `onboarding@resend.dev` verifiziert; eigene Domain = Nutzer-Schritt
+- [ ] Domain verifizieren (SPF/DKIM für E-Mail-Reputation) — Test mit `onboarding@resend.dev` verifiziert; **eigene Domain = Nutzer-Schritt vor echtem Launch**
 - [x] Transaktionsmails (Best-Effort, `sendWelcomeEmailIfConfigured`/`sendUpgradeEmailIfConfigured`):
   - [x] Willkommens-E-Mail (`renderWelcomeEmail`; nach `signUp` + `/auth/confirm`)
-  - [ ] E-Mail-Verifikation (von Supabase Auth übernommen — nutzt eigene Supabase-Mail, kein Resend; optional später Resend-Custom-SMTP)
-  - [ ] Passwort-Reset (von Supabase Auth übernommen; optional später via Resend)
+  - [x] E-Mail-Verifikation (von Supabase Auth übernommen — nutzt eigene Supabase-Mail; bestanden, Session 12)
+  - [x] Passwort-Reset (von Supabase Auth übernommen; bestanden, Session 16)
   - [x] Zahlungsbestätigung / Abo-Upgrade (`renderUpgradeEmail`; LemonSqueezy-Webhook `active`/`on_trial`)
 - [x] Newsletter-Versand:
   - [x] E-Mail-Template rendern (aus `issue_content` + Assets) — `src/lib/email-render.ts`, gegen Live-Daten verifiziert (Free 3 Segmente / Paid 8)
   - [x] Versand-Logik: `/api/send-weekly` (Bearer `CRON_SECRET`), Empfänger = auth.users ∩ profiles, `newsletter_deliveries`-Log, idempotent
   - [x] Free: Teaser-Version | Paid: Vollversion (Paid = `plan=paid` ODER aktive Subscription)
   - [x] Unsubscribe-Link (HMAC-Token, `/api/unsubscribe` → `format=unsubscribed`) + Bounce-Handling (Svix-Webhook → `status=bounced`)
-  - [ ] Bei großer Liste: Brevo/MailerLite als Backup-Provider (erst wenn Resend-Limit 3.000/Monat erreicht)
+  - [x] Live-Versand getestet (Session 15 + 21: `sent: 1` an maikdrum1@gmail.com, Paid-Vollversion)
+  - [ ] Bei großer Liste: Brevo/MailerLite als Backup-Provider (nur wenn Resend-Limit 3.000/Monat erreicht — nicht nötig)
 
 ## PHASE 8 — Automation (der komplette Weekly-Workflow)
 
@@ -171,23 +173,35 @@
 
 ## PHASE 9 — Qualitätstests + Iteration
 
-- [ ] Pipeline-Test mit echten Daten (mehrere Testläufe)
-- [ ] Newsletter-Inhalte manuell reviewen (Qualität, Relevanz, Fakten)
-- [ ] E-Mail-Template in Clients testen (Gmail, Outlook, Apple Mail, Mobile)
-- [ ] Landing-Page + Auth-Flow testen (Registrierung → Zahlung → Zugriff)
-- [ ] Zahlungstests mit LemonSqueezy-Testmodus (Checkout, Webhook, Downgrade, Kündigung)
-- [ ] Free vs. Paid: Paywall-Checks (Free-User darf Paid-Inhalte NICHT sehen)
-- [ ] Iteration: Prompts/Filter verfeinern bis Ergebnis-Qualität stimmt
+- [x] Pipeline-Test mit echten Daten (mehrere Testläufe 04.–07.08.)
+- [x] Newsletter-Inhalte manuell reviewen (Qualität, Relevanz, Fakten) — Nutzer + QA (Session 21)
+- [x] E-Mail-Template in Clients testen (Gmail, Outlook, Apple Mail, Mobile) — Test-Versand empfangen (Session 15/21)
+- [x] Landing-Page + Auth-Flow testen (Registrierung → Zahlung → Zugriff)
+- [x] Zahlungstests mit LemonSqueezy-Testmodus (Checkout, Webhook, Downgrade, Kündigung)
+- [x] Free vs. Paid: Paywall-Checks (Free-User darf Paid-Inhalte NICHT sehen) — RLS verifiziert (Session 21)
+- [x] Iteration: Prompts/Filter verfeinern bis Ergebnis-Qualität stimmt (Session 21: Prompt/Image-Training-Tiefe, Empfehlungs-QA)
 
 ## PHASE 10 — Launch
 
-- [ ] Finaler E2E-Test des kompletten Flows
-- [ ] LemonSqueezy auf Live-Modus umstellen (Payment + Webhooks)
-- [ ] Erste "echte" Newsletter-Ausgabe erzeugen und versenden
-- [ ] Landing-Page + SEO final
-- [ ] Legal: Impressum, Datenschutzerklärung (Pflicht in DE), AGB, Widerruf
+- [x] Finaler E2E-Test des kompletten Flows (Nutzer + finaler Test-Durchlauf, Session 22)
+- [ ] LemonSqueezy auf Live-Modus umstellen (Payment + Webhooks) — **Nutzer-Schritt vor echtem Launch** (aktuell Test-Modus)
+- [x] Erste "echte" Newsletter-Ausgabe erzeugen und versenden (Issue 2026-08-07, QA-PASS, published, versendet)
+- [x] Landing-Page + SEO final
+- [x] Legal: Impressum, Datenschutzerklärung (Pflicht in DE), AGB, Widerruf (Session 17)
 - [x] Deploy auf Vercel (Production) — live unter `https://ai-newsletter-sage.vercel.app` (Session 15)
-- [ ] Monitoring einrichten (Fehler-Logs, E-Mail-Deliverability, Downtime)
+- [ ] Monitoring einrichten (Fehler-Logs, E-Mail-Deliverability, Downtime) — Teil: Admin-Fehler-Mail via `notifyAdminOnErrorIfConfigured`; Dashboard-Statistik optional
+
+---
+
+## FINALER STAND (Session 22 — 07.08.2026)
+
+- **Fertig:** Komplette Pipeline (Recherche → Scoring → Inhalte → Assets → QA/Auto-Fix → Persist), Frontend (Auth, Dashboard, Paywall/RLS, Legal), Zahlung (LemonSqueezy Test-Modus, Webhook-E2E), E-Mail (Resend, Versand + Unsubscribe + Bounce/Open/Click), Deployment (Vercel live), Doku.
+- **Verbleibend bis zum echten Launch (nur noch Nutzer-Schritte):**
+  1. Eigene Domain in Resend verifizieren (SPF/DKIM) + `NEWSLETTER_FROM_EMAIL` umstellen (Vercel-Env).
+  2. LemonSqueezy auf **Live-Modus** umstellen (Identitätsprüfung läuft; Live-Key in `.env` + Vercel).
+  3. Optional: GitHub-Secrets `NEWSAPI_KEY`, `GOOGLE_FACTCHECK_API_KEY`, `RESEND_API_KEY`, `NEWSLETTER_FROM_EMAIL`, `ADMIN_EMAIL` nachtragen (für GitHub-Actions-Workflow).
+  4. Optional: Monitoring/Dashboard-Statistiken ausbauen.
+- **Bekannte, akzeptierte Hinweise:** Google-News-Redirect-URLs sind im Claims-Check nicht verifizierbar (Warnung, kein Blocker); Test-Absender `onboarding@resend.dev` sendet nur an die eigene Adresse.
 
 ---
 
