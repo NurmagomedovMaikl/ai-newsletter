@@ -17,6 +17,20 @@ export function Footer() {
           </Link>
         </nav>
       </div>
+      <div className="mx-auto mt-6 flex w-full max-w-5xl flex-wrap items-center justify-center gap-x-4 gap-y-2 px-4 text-xs text-zinc-400 sm:px-6 dark:text-zinc-500">
+        <Link href="/legal/imprint" className="transition-colors hover:text-zinc-700 dark:hover:text-zinc-300">
+          Impressum
+        </Link>
+        <Link href="/legal/privacy" className="transition-colors hover:text-zinc-700 dark:hover:text-zinc-300">
+          Datenschutz
+        </Link>
+        <Link href="/legal/terms" className="transition-colors hover:text-zinc-700 dark:hover:text-zinc-300">
+          AGB
+        </Link>
+        <Link href="/legal/disclaimer" className="transition-colors hover:text-zinc-700 dark:hover:text-zinc-300">
+          Disclaimer
+        </Link>
+      </div>
     </footer>
   );
 }
