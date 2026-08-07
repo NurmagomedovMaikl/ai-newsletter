@@ -664,3 +664,35 @@ Folgende Entscheidungen wurden vom Auftraggeber getroffen (alle Vorschläge wurd
 - Lokale `.env` enthält jetzt echte Keys (Resend, CRON/UNSUBSCRIBE-Secrets, ADMIN_EMAIL); bleibt gitignored.
 
 
+
+## Session 16 — 07.08.2026 — Passwort-Reset-UI + PKCE-Bugfix (Recovery-Link)
+
+### Neue Dateien / Änderungen
+| Datei | Änderung |
+|---|---|
+| `src/app/auth/reset-password/page.tsx` | Neu: Reset-Seite mit 3 Schritten `checking` → `request` (E-Mail anfordern) / `reset` (neues Passwort) |
+| `src/lib/actions.ts` | + `requestPasswordReset` (Server Action, ruft `auth.resetPasswordForEmail` mit `redirectTo` auf) und + `updatePassword` (nur mit gültiger Session, `updateUser({ password })`) |
+| `src/components/auth-form.tsx` | + Link „Forgot password?" im Login-Formular → `/auth/reset-password` |
+| `src/app/auth/confirm/route.ts` | + `code`-Handling (PKCE) — **der eigentliche Bugfix**, siehe unten |
+| `src/app/auth/confirm/route.ts` (Folgeänderung) | Welcome-Mail nur noch bei `type === "signup"` (nicht bei recovery) |
+
+### Warum der Recovery-Link auf die Login-Seite führte (Bug, Commit `2df460d`)
+- **Symptom:** Klick auf den Link aus der Supabase-Reset-Mail → Nutzer landete auf `/login` statt auf der „neues Passwort"-Seite.
+- **Ursache (Root Cause):** Der Recovery-Link nutzt den **PKCE-Flow**. Link-Format (vom Nutzer bereitgestellt):
+  `https://<ref>.supabase.co/auth/v1/verify?token=pkce_<hash>&type=recovery&redirect_to=https://ai-newsletter-sage.vercel.app/auth/confirm?next=/auth/reset-password`
+  → Supabase verifiziert den OTP-Token und leitet den Browser dann zum `redirect_to` mit einem **`code`-Parameter** (Authorization-Code) weiter.
+  → `/auth/confirm` kannte aber nur den **`token_hash`-Flow**; ohne `token_hash` fiel die Route auf `login?error=confirm` zurück. (Das Signup funktionierte, weil dessen Ziel `/auth/callback` ist, das `code` per `exchangeCodeForSession` bereits tauscht.)
+- **Fix:** `/auth/confirm` behandelt jetzt beide Flows:
+  1. `?code=…` → `supabase.auth.exchangeCodeForSession(code)` (gleicher Weg wie `/auth/callback`) → Redirect zu `next`.
+  2. `?token_hash=…&type=…` → `verifyOtp` (wie bisher, für Nicht-PKCE-Projekte).
+  Session-Cookies werden im Server-Route gesetzt; die Reset-Seite erkennt die Session per `getUser()` und zeigt den Reset-Schritt.
+- **Erkenntnis:** Dieses Supabase-Projekt hat **PKCE für E-Mail-Links aktiv** (`pkce_…`-Tokens). Alle E-Mail-Verify-Links (Signup, Recovery) laufen über den `/verify`-Endpunkt mit `code`-Redirect — nur `/auth/callback` (Signup) hatte das bisher korrekt behandelt.
+
+### Verifikation
+- `tsc --noEmit` ✓ · `eslint` (confirm-Route) ✓ · `next build` ✓ (alle 15 Routen + Proxy, Build-Exit 0).
+- Commit `2df460d` gepusht → Vercel deployt automatisch.
+
+### Offen / Nächster Nutzer-Test
+- **Retest Passwort-Reset live** (nach Deploy): `/login` → „Forgot password?" → E-Mail → Link → neues Passwort setzen → Login mit neuem Passwort.
+- Danach weiter in der Launch-Todo-Liste (Zahlung live → Legal → Abo-Verwaltung → Review-Schritt → Monitoring → Phase-9-Tests → E2E/Launch).
+
