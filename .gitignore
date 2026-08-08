@@ -38,6 +38,9 @@ yarn-error.log*
 /pipeline/output/*
 !/pipeline/output/.gitkeep
 
+# docs binary
+*.docx
+
 # vercel
 .vercel
 
